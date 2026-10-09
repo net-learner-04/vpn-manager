@@ -1,0 +1,30 @@
+# Compiled binaries
+
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Build output
+
+/build/
+/dist/
+
+# Local environment and secrets
+
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa
+id_ed25519
+
+# Editor settings
+
+.vscode/
+
+# OS files
+
+.DS_Store
+Thumbs.db
