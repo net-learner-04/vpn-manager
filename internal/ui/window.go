@@ -1,101 +1,40 @@
 package ui
 
 import (
+	"vpn-manager/assets"
+
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
+	"fyne.io/fyne/v2/driver/desktop"
 )
 
-func BuildWindow(w fyne.Window) {
-	// Set the window size to 700x200 pixels.
+func BuildWindow(a fyne.App, w fyne.Window) {
+	iconRes := fyne.NewStaticResource("icon.png", assets.Icon)
+
+	a.SetIcon(iconRes)
+
+	w.SetIcon(iconRes)
 	w.Resize(fyne.NewSize(600, 400))
+	w.SetFixedSize(true)
 
-	title := widget.NewLabel("VPN Manager")
-	title.TextStyle = fyne.TextStyle{Bold: true}
+	// Set up the system tray menu if the app supports it.
+	if desk, ok := a.(desktop.App); ok {
+		menu := fyne.NewMenu("VPN Manager",
+			fyne.NewMenuItem("Open", func() {
+				w.Show()
+				w.RequestFocus()
+			}),
+			fyne.NewMenuItemSeparator(),
+			fyne.NewMenuItem("Quit", func() { a.Quit() }),
+		)
+		desk.SetSystemTrayMenu(menu)
+		desk.SetSystemTrayIcon(iconRes)
 
-	status := widget.NewLabel("Status: Disconnected")
-	peers := widget.NewLabel("Peers: 0")
-	download := widget.NewLabel("Download: 0 B/s")
-	upload := widget.NewLabel("Upload: 0 B/s")
-
-	refreshButton := widget.NewButton(
-		"Refresh Status",
-		func() {
-			status.SetText("Status: clicked refresh button")
-		},
-	)
-
-	testButton := widget.NewButton(
-		"Server Connection Test",
-		func() {
-			status.SetText("Status: clicked test button")
-		},
-	)
-
-	addPeerButton := widget.NewButton(
-		"Add a New Device",
-		func() {
-			status.SetText("Status: clicked add peer button")
-		},
-	)
-
-	// Create a vertical box container to hold
-	// the title, status, peers, download, upload, and buttons.
-	dashboard := container.NewVBox(
-		title,
-		// Add a separator line between the title and the status.
-		widget.NewSeparator(),
-
-		container.NewGridWithColumns(2,
-			status,
-			peers,
-		),
-
-		container.NewGridWithColumns(2,
-			download,
-			upload,
-		),
-
-		widget.NewSeparator(),
-
-		container.NewVBox(
-			refreshButton,
-			testButton,
-			addPeerButton,
-		),
-	)
-
-	menuItems := []string{
-		"Dashboard",
-		"Devices",
-		"Traffic",
-		"Logs",
-		"Settings",
+		// Set the close intercept to hide
+		// the window instead of closing it.
+		w.SetCloseIntercept(func() { w.Hide() })
 	}
 
-	menu := widget.NewList(
-		// Return the number of items in the list.
-		func() int {
-			return len(menuItems)
-		},
-		// Create a new label for each item in the list.
-		func() fyne.CanvasObject {
-			return widget.NewLabel("Menu")
-		},
-		// Update the label for each item in the list.
-		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			obj.(*widget.Label).SetText(menuItems[id])
-		},
-	)
+	navigation := BuildNavigation()
 
-	split := container.NewHSplit(
-		menu,
-		container.NewPadded(dashboard),
-	)
-
-	// Set the initial position of the split to 20%
-	// for the menu and 80% for the dashboard.
-	split.SetOffset(0.2)
-
-	w.SetContent(split)
+	w.SetContent(navigation)
 }
