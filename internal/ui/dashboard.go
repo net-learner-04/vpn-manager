@@ -10,29 +10,32 @@ func BuildDashboard() fyne.CanvasObject {
 	title := widget.NewLabel("Dashboard")
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	status := widget.NewLabel("Status: Disconnected")
+	serverStatus := widget.NewLabel("Server Status: Unknown")
+	connectionStatus := widget.NewLabel("Connection: Disconnected")
 	peers := widget.NewLabel("Peers: 0")
 	download := widget.NewLabel("Download: 0 B/s")
 	upload := widget.NewLabel("Upload: 0 B/s")
+	lasthandshake := widget.NewLabel("Last Handshake: N/A")
+	totaltraffic := widget.NewLabel("Total Traffic: 0 B")
 
 	refreshButton := widget.NewButton(
 		"Refresh Status",
 		func() {
-			status.SetText("Status: clicked refresh button")
+			connectionStatus.SetText("Connection: clicked refresh button")
 		},
 	)
 
 	testButton := widget.NewButton(
 		"Server Connection Test",
 		func() {
-			status.SetText("Status: clicked test button")
+			connectionStatus.SetText("Connection: clicked test button")
 		},
 	)
 
 	addPeerButton := widget.NewButton(
 		"Add a New Device",
 		func() {
-			status.SetText("Status: clicked add peer button")
+			connectionStatus.SetText("Connection: clicked add peer button")
 		},
 	)
 
@@ -43,14 +46,21 @@ func BuildDashboard() fyne.CanvasObject {
 		// Add a separator line between the title and the status.
 		widget.NewSeparator(),
 
+		serverStatus,
+
 		container.NewGridWithColumns(2,
-			status,
+			connectionStatus,
 			peers,
 		),
 
 		container.NewGridWithColumns(2,
 			download,
 			upload,
+		),
+
+		container.NewGridWithColumns(2,
+			lasthandshake,
+			totaltraffic,
 		),
 
 		widget.NewSeparator(),
