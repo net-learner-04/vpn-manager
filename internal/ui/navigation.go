@@ -10,7 +10,6 @@ func BuildNavigation() fyne.CanvasObject {
 	// Create the different views for the application.
 	dashboardView := BuildDashboard()
 	deviceView := BuildDevices()
-	trafficView := BuildTraffic()
 	logsView := BuildLogs()
 	settingsView := BuildSettings()
 
@@ -20,7 +19,6 @@ func BuildNavigation() fyne.CanvasObject {
 	menuItems := []string{
 		"Dashboard",
 		"Devices",
-		"Traffic",
 		"Logs",
 		"Settings",
 	}
@@ -42,8 +40,6 @@ func BuildNavigation() fyne.CanvasObject {
 			contentArea.Objects = []fyne.CanvasObject{dashboardView}
 		case "Devices":
 			contentArea.Objects = []fyne.CanvasObject{deviceView}
-		case "Traffic":
-			contentArea.Objects = []fyne.CanvasObject{trafficView}
 		case "Logs":
 			contentArea.Objects = []fyne.CanvasObject{logsView}
 		case "Settings":
