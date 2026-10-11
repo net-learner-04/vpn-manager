@@ -13,8 +13,8 @@ func BuildWindow(a fyne.App, w fyne.Window) {
 	a.SetIcon(iconRes)
 
 	w.SetIcon(iconRes)
-	w.Resize(fyne.NewSize(600, 400))
-	w.SetFixedSize(true)
+	w.Resize(fyne.NewSize(800, 700))
+	// w.SetFixedSize(true)
 
 	// Set up the system tray menu if the app supports it.
 	if desk, ok := a.(desktop.App); ok {
