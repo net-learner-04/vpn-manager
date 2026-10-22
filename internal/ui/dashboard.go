@@ -27,6 +27,7 @@ func BuildDashboard() fyne.CanvasObject {
 	// Group status information into a card for a cleaner dashboard look
 	statusContainer := container.NewVBox(
 		serverStatus,
+		widget.NewSeparator(),
 		container.NewGridWithColumns(2,
 			connectionStatus,
 			peers,
@@ -40,7 +41,23 @@ func BuildDashboard() fyne.CanvasObject {
 			totaltraffic,
 		),
 	)
-	statusCard := widget.NewCard("", "", statusContainer)
+	statusCard := widget.NewCard("Status", "", statusContainer)
+
+	connectButton := widget.NewButton(
+		"Connect",
+		func() {
+			connectionStatus.SetText("Connection: Connected")
+		},
+	)
+	connectButton.Importance = widget.HighImportance
+
+	unconnectButton := widget.NewButton(
+		"Unconnected",
+		func() {
+			connectionStatus.SetText("Connection: Unconnected")
+		},
+	)
+	unconnectButton.Importance = widget.DangerImportance
 
 	refreshButton := widget.NewButton(
 		"Refresh Status",
@@ -48,53 +65,47 @@ func BuildDashboard() fyne.CanvasObject {
 			connectionStatus.SetText("Connection: clicked refresh button")
 		},
 	)
-
-	addPeerButton := widget.NewButton(
-		"Add a New Device",
-		func() {
-			connectionStatus.SetText("Connection: clicked add peer button")
-		},
-	)
+	refreshButton.Importance = widget.SuccessImportance
 
 	// Create a vertical box container to hold
-	// the title, status, peers, download, upload, and buttons.
-	dashboard := container.NewVBox(
+	// the title, status, peers, download, upload, and buttons
+	header := container.NewVBox(
 		title,
 
+		widget.NewSeparator(),
+
 		statusCard,
-
-		widget.NewSeparator(),
-
-		container.NewVBox(
-			refreshButton,
-			addPeerButton,
-		),
-
-		widget.NewSeparator(),
-
-		buildGraphs(),
 	)
+
+	// Buttons sit at the bottom, same as the Settings page
+	footer := container.NewVBox(
+		widget.NewSeparator(),
+
+		container.NewHBox(
+			connectButton,
+			unconnectButton,
+			refreshButton,
+		),
+	)
+
+	// The graph takes all the remaining space between header and footer
+	dashboard := container.NewBorder(header, footer, nil, nil, buildGraphs())
 	return dashboard
 }
 
 func buildGraphs() fyne.CanvasObject {
-	graphWidth := float32(550)
 	graphHeight := float32(150)
 
-	graphCanvas := container.NewWithoutLayout()
-	graphCanvas.Resize(fyne.NewSize(graphWidth, graphHeight))
-
+	// Stack layout makes the background and line follow the card size
 	graphBackgroun := canvas.NewRectangle(color.NRGBA{R: 40, G: 40, B: 40, A: 255})
-	graphBackgroun.Resize(fyne.NewSize(graphWidth, graphHeight))
-	graphCanvas.Add(graphBackgroun)
+	graphBackgroun.SetMinSize(fyne.NewSize(0, graphHeight))
 
-	line := canvas.NewLine(color.RGBA{R: 0, G: 180, B: 255, A: 255})
+	line := canvas.NewLine(color.RGBA{R: 0, G: 220, B: 0, A: 255})
 	line.StrokeWidth = 2
 
-	line.Resize(fyne.NewSize(graphWidth, graphHeight))
-	graphCanvas.Add(line)
+	graphCanvas := container.NewStack(graphBackgroun, line)
 
-	graphCard := widget.NewCard("Network Traffic Graph", "", graphCanvas)
+	graphCard := widget.NewCard("Traffic", "", graphCanvas)
 
 	return graphCard
 }
