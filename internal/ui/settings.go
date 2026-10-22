@@ -40,13 +40,11 @@ func BuildSettings() fyne.CanvasObject {
 	closeToTray := widget.NewCheck("", func(b bool) {})
 	autoRefresh := widget.NewCheck("", func(b bool) {})
 	startMinimized := widget.NewCheck("", func(b bool) {})
-	selectTheme := widget.NewSelect([]string{"System Default", "Light", "Dark"}, nil)
 
 	appearanceForm := widget.NewForm(
 		widget.NewFormItem("Close to Tray", closeToTray),
 		widget.NewFormItem("Auto Refresh", autoRefresh),
 		widget.NewFormItem("Start Minimized", startMinimized),
-		widget.NewFormItem("Theme", selectTheme),
 	)
 	appearanceCard := widget.NewCard("Appearance", "", appearanceForm)
 
@@ -56,6 +54,7 @@ func BuildSettings() fyne.CanvasObject {
 
 		},
 	)
+	testConnectionButton.Importance = widget.SuccessImportance
 
 	saveSettingsButton := widget.NewButton(
 		"Save Settings",
