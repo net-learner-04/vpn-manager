@@ -4,10 +4,7 @@ import (
 	"image/color"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
-
-	"vpn-manager/assets"
 )
 
 func rgb(r, g, b uint8) color.NRGBA { return color.NRGBA{R: r, G: g, B: b, A: 0xFF} }
@@ -25,7 +22,7 @@ var (
 	colSuccess   = rgb(0x00, 0x80, 0x00)
 	colWarning   = rgb(0xFF, 0xA5, 0x00)
 
-	// Translucent overlays keep the content visible underneath.
+	// Translucent overlays keep the content visible underneath
 	colHover   = color.NRGBA{A: 0x14}
 	colPressed = color.NRGBA{A: 0x30}
 	colFocus   = color.NRGBA{R: 0x0A, G: 0x24, B: 0x6A, A: 0x30}
@@ -108,7 +105,7 @@ func (t Theme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.
 }
 
 func (t Theme) Font(style fyne.TextStyle) fyne.Resource {
-	// The default font has no Korean glyphs; return an embedded font here.
+	// The default font has no Korean glyphs; return an embedded font here
 	return theme.DefaultTheme().Font(style)
 }
 
@@ -139,7 +136,7 @@ func (t Theme) Size(name fyne.ThemeSizeName) float32 {
 	case theme.SizeNameScrollBarSmall:
 		return 6
 
-	// Square corners everywhere for a consistent look.
+	// Square corners everywhere for a consistent look
 	case theme.SizeNameInputRadius,
 		theme.SizeNameSelectionRadius,
 		theme.SizeNameScrollBarRadius,
@@ -153,32 +150,4 @@ func (t Theme) Size(name fyne.ThemeSizeName) float32 {
 		return 0
 	}
 	return theme.DefaultTheme().Size(name)
-}
-
-func ApplyTheme(a fyne.App, w fyne.Window) {
-	a.Settings().SetTheme(&Theme{})
-
-	iconRes := fyne.NewStaticResource("icon.png", assets.Icon)
-	a.SetIcon(iconRes)
-	w.SetIcon(iconRes)
-
-	w.Resize(fyne.NewSize(750, 500))
-	w.SetFixedSize(true)
-
-	// System tray is only available on supported desktop platforms.
-	if desk, ok := a.(desktop.App); ok {
-		menu := fyne.NewMenu("VPN Manager",
-			fyne.NewMenuItem("Open", func() {
-				w.Show()
-				w.RequestFocus()
-			}),
-			fyne.NewMenuItemSeparator(),
-			fyne.NewMenuItem("Quit", func() { a.Quit() }),
-		)
-		desk.SetSystemTrayMenu(menu)
-		desk.SetSystemTrayIcon(iconRes)
-
-		// Hide instead of closing so the app keeps running in the tray.
-		w.SetCloseIntercept(func() { w.Hide() })
-	}
 }
