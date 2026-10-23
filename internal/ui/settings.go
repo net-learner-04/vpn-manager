@@ -10,7 +10,7 @@ func BuildSettings() fyne.CanvasObject {
 	title := widget.NewLabel("Settings")
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	// 1. Server settings form
+	// Server settings form
 	serverAddress := widget.NewEntry()
 	sshPort := widget.NewEntry()
 	sshUsername := widget.NewEntry()
@@ -26,7 +26,7 @@ func BuildSettings() fyne.CanvasObject {
 	)
 	serverCard := widget.NewCard("Server Connection", "", serverForm)
 
-	// 2. WireGuard settings form
+	// WireGuard settings form
 	wireguardInterface := widget.NewEntry()
 	refreshInterval := widget.NewEntry()
 
@@ -36,7 +36,7 @@ func BuildSettings() fyne.CanvasObject {
 	)
 	wgCard := widget.NewCard("WireGuard", "", wgForm)
 
-	// 3. Appearance settings form
+	// Appearance settings form
 	closeToTray := widget.NewCheck("", func(b bool) {})
 	autoRefresh := widget.NewCheck("", func(b bool) {})
 	startMinimized := widget.NewCheck("", func(b bool) {})
@@ -54,7 +54,6 @@ func BuildSettings() fyne.CanvasObject {
 
 		},
 	)
-	testConnectionButton.Importance = widget.SuccessImportance
 
 	saveSettingsButton := widget.NewButton(
 		"Save Settings",
@@ -62,7 +61,6 @@ func BuildSettings() fyne.CanvasObject {
 
 		},
 	)
-	saveSettingsButton.Importance = widget.HighImportance
 
 	buttonBox := container.NewHBox(
 		testConnectionButton,
