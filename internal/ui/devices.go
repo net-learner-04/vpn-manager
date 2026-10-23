@@ -3,6 +3,8 @@ package ui
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"strings"
@@ -14,25 +16,46 @@ type Device struct {
 	Status string
 }
 
-func BuildDeviceItem(device Device) fyne.CanvasObject {
+func BuildDevicesItem(device Device, w fyne.Window) fyne.CanvasObject {
 	name := widget.NewLabel(device.Name)
 	name.TextStyle = fyne.TextStyle{Bold: true}
 
 	ip := widget.NewLabel(device.IP)
 	status := widget.NewLabel(device.Status)
 
-	details := container.NewVBox(
-		name,
-		ip,
+	deleteButton := widget.NewButtonWithIcon(
+		"",
+		theme.DeleteIcon(),
+		func() {
+			dialog.NewConfirm(
+				"Delete Device",
+				"Do you want to delete this device?",
+				func(b bool) {
+					if b {
+						// to do : delete logic
+					}
+				},
+				w,
+			).Show()
+		},
+	)
+	deleteButton.Importance = widget.LowImportance
+
+	right := container.NewCenter(
+		container.NewHBox(status, deleteButton),
 	)
 
 	return container.NewBorder(
-		nil, nil, nil, status,
-		details,
+		// top, bottom, left, right, center
+		nil,
+		nil,
+		nil,
+		right,
+		container.NewVBox(name, ip),
 	)
 }
 
-func BuildDevices() fyne.CanvasObject {
+func BuildDevices(w fyne.Window) fyne.CanvasObject {
 	title := widget.NewLabel("Devices")
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
@@ -58,7 +81,7 @@ func BuildDevices() fyne.CanvasObject {
 	listContainer := container.NewVBox()
 
 	for _, device := range deviceList {
-		item := BuildDeviceItem(device)
+		item := BuildDevicesItem(device, w)
 		listContainer.Add(item)
 		listContainer.Add(widget.NewSeparator())
 	}
@@ -71,7 +94,7 @@ func BuildDevices() fyne.CanvasObject {
 		listContainer.RemoveAll()
 
 		for _, device := range matched {
-			item := BuildDeviceItem(device)
+			item := BuildDevicesItem(device, w)
 			listContainer.Add(item)
 			listContainer.Add(widget.NewSeparator())
 		}
@@ -85,7 +108,6 @@ func BuildDevices() fyne.CanvasObject {
 			// to do : add devices
 		},
 	)
-	addButton.Importance = widget.HighImportance
 
 	refreshButton := widget.NewButton(
 		"Refresh Status",
@@ -93,7 +115,6 @@ func BuildDevices() fyne.CanvasObject {
 			// to do : refresh status
 		},
 	)
-	refreshButton.Importance = widget.SuccessImportance
 
 	devices := container.NewBorder(
 		container.NewVBox(
