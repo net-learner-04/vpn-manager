@@ -6,10 +6,10 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func BuildNavigation() fyne.CanvasObject {
+func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 	// Create the different views for the application.
 	dashboardView := BuildDashboard()
-	deviceView := BuildDevices()
+	deviceView := BuildDevices(w)
 	logsView := BuildLogs()
 	settingsView := BuildSettings()
 
