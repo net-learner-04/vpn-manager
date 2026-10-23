@@ -36,7 +36,7 @@ func BuildWindow(a fyne.App, w fyne.Window) {
 		w.SetCloseIntercept(func() { w.Hide() })
 	}
 
-	navigation := BuildNavigation()
+	navigation := BuildNavigation(w)
 
 	w.SetContent(navigation)
 }
