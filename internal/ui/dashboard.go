@@ -65,7 +65,6 @@ func BuildDashboard() fyne.CanvasObject {
 			connectionStatus.SetText("Connection: clicked refresh button")
 		},
 	)
-	refreshButton.Importance = widget.SuccessImportance
 
 	// Create a vertical box container to hold
 	// the title, status, peers, download, upload, and buttons
