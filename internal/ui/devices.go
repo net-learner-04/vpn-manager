@@ -244,4 +244,3 @@ func FilterDevices(devices []data.Device, keyword string) []data.Device {
 
 	return result
 }
-}
