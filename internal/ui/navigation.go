@@ -11,7 +11,7 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 	dashboardView := BuildDashboard()
 	deviceView := BuildDevices(w)
 	logsView := BuildLogs()
-	settingsView := BuildSettings()
+	settingsView := BuildSettings(w)
 
 	// Create a tab container to hold the different views.
 	contentArea := container.NewPadded(dashboardView)
