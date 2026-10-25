@@ -8,7 +8,7 @@ import (
 )
 
 // Specify the file path where you want to save it later
-const filename = "internal/data/devices.json"
+const devicesfile = "internal/data/devices.json"
 
 type Device struct {
 	Name      string `json:"name"`
@@ -16,8 +16,8 @@ type Device struct {
 	PublicKey string `json:"public_key"`
 }
 
-func CreateJsonFile() error {
-	_, err := os.Stat(filename)
+func CreateDevicesFile() error {
+	_, err := os.Stat(devicesfile)
 	if err == nil {
 		// The file already exists
 		return nil
@@ -29,22 +29,22 @@ func CreateJsonFile() error {
 	}
 
 	// If the file doesn't exist, create it
-	if err := os.WriteFile(filename, []byte("[]"), 0644); err != nil {
+	if err := os.WriteFile(devicesfile, []byte("[]"), 0644); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func ReadJsonFile() ([]Device, error) {
-	filedata, err := os.ReadFile(filename)
+func ReadDevicesFile() ([]Device, error) {
+	filedata, err := os.ReadFile(devicesfile)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			if err := CreateJsonFile(); err != nil {
+			if err := CreateDevicesFile(); err != nil {
 				return nil, err
 			}
 
-			filedata, err = os.ReadFile(filename)
+			filedata, err = os.ReadFile(devicesfile)
 			if err != nil {
 				return nil, err
 			}
@@ -61,13 +61,13 @@ func ReadJsonFile() ([]Device, error) {
 	return data, nil
 }
 
-func WriteJsonFile(devices []Device) error {
-	jsondata, err := json.MarshalIndent(devices, "", "	")
+func WriteDevicesFile(devices []Device) error {
+	jsondata, err := json.MarshalIndent(devices, "", "\t")
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(filename, jsondata, 0644)
+	err = os.WriteFile(devicesfile, jsondata, 0644)
 	if err != nil {
 		return err
 	}
