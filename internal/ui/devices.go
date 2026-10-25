@@ -57,7 +57,7 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 	title := widget.NewLabel("Devices")
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	deviceList, err := data.ReadJsonFile()
+	deviceList, err := data.ReadDevicesFile()
 	if err != nil {
 		dialog.ShowError(err, w)
 
@@ -105,7 +105,7 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 		}
 
 		// Save JSON
-		if err := data.WriteJsonFile(newList); err != nil {
+		if err := data.WriteDevicesFile(newList); err != nil {
 			dialog.ShowError(err, w)
 			return
 		}
@@ -175,7 +175,7 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 					)
 
 					// Save JSON first
-					if err := data.WriteJsonFile(updatedDevices); err != nil {
+					if err := data.WriteDevicesFile(updatedDevices); err != nil {
 						dialog.ShowError(err, w)
 						return
 					}
