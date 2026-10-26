@@ -1,7 +1,10 @@
 package ui
 
 import (
+	"image/color"
+
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 )
@@ -49,14 +52,21 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 		contentArea.Refresh()
 	}
 
-	split := container.NewHSplit(
-		menu,
+	// Display with the Dashboard selected when first launched
+	menu.Select(0)
+
+	// A wrapper to fix the menu width
+	spacer := canvas.NewRectangle(color.Transparent)
+	spacer.SetMinSize(fyne.NewSize(125, 0))
+	menuWrapper := container.NewStack(spacer, menu)
+
+	split := container.NewBorder(
+		nil,
+		nil,
+		menuWrapper,
+		nil,
 		contentArea,
 	)
-
-	// Set the initial position of the split to 20%
-	// for the menu and 80% for the content area.
-	split.SetOffset(0.2)
 
 	return split
 }
