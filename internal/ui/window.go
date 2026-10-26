@@ -17,7 +17,7 @@ func BuildWindow(a fyne.App, w fyne.Window) {
 	a.SetIcon(iconRes)
 
 	w.SetIcon(iconRes)
-	w.Resize(fyne.NewSize(750, 500))
+	w.Resize(fyne.NewSize(700, 450))
 	w.SetFixedSize(true)
 
 	// Load settings
