@@ -49,24 +49,20 @@ func BuildLogs() fyne.CanvasObject {
 			Message: "Server connection not tested",
 			Source:  "Connection",
 		},
+		{
+			Time:    "11:32:04",
+			Level:   "WARN",
+			Message: "test",
+			Source:  "test",
+		},
 	}
 
 	listContainer := container.NewVBox()
 
-	for _, log := range logList {
-		item := BuildLogsItem(log)
-		listContainer.Add(item)
-		listContainer.Add(widget.NewSeparator())
-	}
-
-	searchEntry := widget.NewEntry()
-	searchEntry.SetPlaceHolder("Search Logs...")
-	searchEntry.OnChanged = func(s string) {
-		matched := FilterLogs(logList, s)
-
+	refreshLogList := func(logs []Logs) {
 		listContainer.RemoveAll()
 
-		for _, log := range matched {
+		for _, log := range logs {
 			item := BuildLogsItem(log)
 			listContainer.Add(item)
 			listContainer.Add(widget.NewSeparator())
@@ -75,17 +71,42 @@ func BuildLogs() fyne.CanvasObject {
 		listContainer.Refresh()
 	}
 
+	for _, log := range logList {
+		item := BuildLogsItem(log)
+		listContainer.Add(item)
+		listContainer.Add(widget.NewSeparator())
+	}
+
+	// Currently Selected Level
+	selectedLevel := "ALL"
+
+	searchEntry := widget.NewEntry()
+	searchEntry.SetPlaceHolder("Search Logs...")
+
+	// Link the search term filter and the level filter
+	applyLogFilters := func() {
+		matched := FilterLogsLevel(logList, selectedLevel)
+		matched = FilterLogs(matched, searchEntry.Text)
+		refreshLogList(matched)
+	}
+
+	searchEntry.OnChanged = func(s string) {
+		applyLogFilters()
+	}
+
 	allButton := widget.NewButton(
 		"All",
 		func() {
-			// to do : all button
+			selectedLevel = "ALL"
+			applyLogFilters()
 		},
 	)
 
 	infoButton := widget.NewButton(
 		"Info",
 		func() {
-			// to do : info button
+			selectedLevel = "INFO"
+			applyLogFilters()
 		},
 	)
 	infoButton.Importance = widget.SuccessImportance
@@ -93,7 +114,8 @@ func BuildLogs() fyne.CanvasObject {
 	warnButton := widget.NewButton(
 		"Warning",
 		func() {
-			// to do : warn button
+			selectedLevel = "WARN"
+			applyLogFilters()
 		},
 	)
 	warnButton.Importance = widget.WarningImportance
@@ -101,7 +123,8 @@ func BuildLogs() fyne.CanvasObject {
 	errorButton := widget.NewButton(
 		"Error",
 		func() {
-			// to do : error button
+			selectedLevel = "ERROR"
+			applyLogFilters()
 		},
 	)
 	errorButton.Importance = widget.DangerImportance
@@ -161,14 +184,24 @@ func FilterLogs(logs []Logs, keyword string) []Logs {
 
 	for _, log := range logs {
 		time := strings.ToLower(log.Time)
-		level := strings.ToLower(log.Level)
 		message := strings.ToLower(log.Message)
 		source := strings.ToLower(log.Source)
 
 		if strings.Contains(time, keyword) ||
-			strings.Contains(level, keyword) ||
 			strings.Contains(message, keyword) ||
 			strings.Contains(source, keyword) {
+			result = append(result, log)
+		}
+	}
+
+	return result
+}
+
+func FilterLogsLevel(logs []Logs, level string) []Logs {
+	result := []Logs{}
+
+	for _, log := range logs {
+		if level == "ALL" || strings.EqualFold(log.Level, level) {
 			result = append(result, log)
 		}
 	}
