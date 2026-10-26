@@ -94,15 +94,50 @@ func BuildDashboard() fyne.CanvasObject {
 
 func buildGraphs() fyne.CanvasObject {
 	graphHeight := float32(150)
+	graphWidth := float32(570)
 
 	// Stack layout makes the background and line follow the card size
-	graphBackgroun := canvas.NewRectangle(color.NRGBA{R: 40, G: 40, B: 40, A: 255})
-	graphBackgroun.SetMinSize(fyne.NewSize(0, graphHeight))
+	graphBackground := canvas.NewRectangle(
+		color.NRGBA{R: 214, G: 211, B: 206, A: 255},
+	)
+	graphBackground.SetMinSize(fyne.NewSize(graphWidth, graphHeight))
 
-	line := canvas.NewLine(color.RGBA{R: 0, G: 220, B: 0, A: 255})
-	line.StrokeWidth = 2
+	// Grid lines
+	gridColor := color.NRGBA{R: 184, G: 181, B: 174, A: 255}
+	gridLines := []fyne.CanvasObject{}
 
-	graphCanvas := container.NewStack(graphBackgroun, line)
+	// Horizontal grid lines
+	for _, y := range []float32{30, 60, 90, 120} {
+		line := canvas.NewLine(gridColor)
+		line.StrokeWidth = 1
+		line.Position1 = fyne.NewPos(0, y)
+		line.Position2 = fyne.NewPos(graphWidth, y)
+		gridLines = append(gridLines, line)
+	}
+
+	// Vertical grid lines
+	for _, x := range []float32{95, 190, 285, 380, 475} {
+		line := canvas.NewLine(gridColor)
+		line.StrokeWidth = 1
+		line.Position1 = fyne.NewPos(x, 0)
+		line.Position2 = fyne.NewPos(x, graphHeight)
+		gridLines = append(gridLines, line)
+	}
+
+	// Traffic line (temporary placeholder)
+	trafficLine := canvas.NewLine(
+		color.NRGBA{R: 71, G: 125, B: 82, A: 255},
+	)
+	trafficLine.StrokeWidth = 2
+	trafficLine.Position1 = fyne.NewPos(0, 90)
+	trafficLine.Position2 = fyne.NewPos(graphWidth, 55)
+
+	// Combine graph objects
+	graphObjects := []fyne.CanvasObject{graphBackground}
+	graphObjects = append(graphObjects, gridLines...)
+	graphObjects = append(graphObjects, trafficLine)
+
+	graphCanvas := container.NewStack(graphObjects...)
 
 	graphCard := widget.NewCard("Traffic", "", graphCanvas)
 
