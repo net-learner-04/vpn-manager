@@ -35,7 +35,6 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 
 	// Appearance settings form
 	closeToTray := widget.NewCheck("", func(b bool) {})
-	autoRefresh := widget.NewCheck("", func(b bool) {})
 
 	loadConfig := func() {
 		config, err := data.ReadSettingsFile()
@@ -54,18 +53,25 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		refreshInterval.SetText(config.RefreshInterval)
 
 		closeToTray.SetChecked(config.CloseToTray)
-		autoRefresh.SetChecked(config.AutoRefresh)
 	}
 
 	// Load data when the program starts
 	loadConfig()
 
-	serverForm := widget.NewForm(
-		widget.NewFormItem("Server Address", serverAddress),
-		widget.NewFormItem("SSH Port", sshPort),
-		widget.NewFormItem("SSH Username", sshUsername),
-		widget.NewFormItem("SSH Key Path", sshKeyPath),
-		widget.NewFormItem("Timeout (s)", connectionTimeout),
+	serverForm := container.NewVBox(
+		container.NewGridWithColumns(2,
+			widget.NewForm(
+				widget.NewFormItem("Server Address", serverAddress),
+				widget.NewFormItem("SSH Username", sshUsername),
+			),
+			widget.NewForm(
+				widget.NewFormItem("SSH Port", sshPort),
+				widget.NewFormItem("Timeout (s)", connectionTimeout),
+			),
+		),
+		widget.NewForm(
+			widget.NewFormItem("SSH Key Path", sshKeyPath),
+		),
 	)
 	serverCard := widget.NewCard("Server Connection", "", serverForm)
 
@@ -77,7 +83,6 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 
 	appearanceForm := widget.NewForm(
 		widget.NewFormItem("Close to Tray", closeToTray),
-		widget.NewFormItem("Auto Refresh", autoRefresh),
 	)
 	appearanceCard := widget.NewCard("Appearance", "", appearanceForm)
 
@@ -102,7 +107,6 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				RefreshInterval:    refreshInterval.Text,
 
 				CloseToTray: closeToTray.Checked,
-				AutoRefresh: autoRefresh.Checked,
 			}
 
 			if err := data.WriteSettingsFile(config); err != nil {
@@ -123,13 +127,10 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		title,
 		widget.NewSeparator(),
 		serverCard,
-		wgCard,
-		appearanceCard,
+		container.NewGridWithColumns(2, wgCard, appearanceCard),
 		widget.NewSeparator(),
 		buttonBox,
 	)
 
-	settings := container.NewVScroll(content)
-
-	return settings
+	return content
 }
