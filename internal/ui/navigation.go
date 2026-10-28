@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -60,10 +61,15 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 	spacer.SetMinSize(fyne.NewSize(125, 0))
 	menuWrapper := container.NewStack(spacer, menu)
 
+	divider := canvas.NewRectangle(theme.Color(theme.ColorNameSeparator))
+	divider.SetMinSize(fyne.NewSize(1, 0))
+
+	left := container.NewBorder(nil, nil, nil, divider, menuWrapper)
+
 	split := container.NewBorder(
 		nil,
 		nil,
-		menuWrapper,
+		left,
 		nil,
 		contentArea,
 	)
