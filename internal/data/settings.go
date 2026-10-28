@@ -24,7 +24,6 @@ type Settings struct {
 
 	// Appearance & Behavior
 	CloseToTray bool `json:"close_to_tray"`
-	AutoRefresh bool `json:"auto_refresh"`
 }
 
 func CreateSettingsFile() error {
@@ -54,7 +53,6 @@ func CreateSettingsFile() error {
 
 		// Appearance & Behavior
 		CloseToTray: false,
-		AutoRefresh: true,
 	}
 
 	data, err := json.MarshalIndent(config, "", "\t")
