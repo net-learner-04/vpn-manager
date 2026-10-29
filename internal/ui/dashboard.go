@@ -51,13 +51,13 @@ func BuildDashboard() fyne.CanvasObject {
 	)
 	connectButton.Importance = widget.HighImportance
 
-	unconnectButton := widget.NewButton(
-		"Unconnected",
+	disconnectButton := widget.NewButton(
+		"Disconnect",
 		func() {
-			connectionStatus.SetText("Connection: Unconnected")
+			connectionStatus.SetText("Connection: Disconnected")
 		},
 	)
-	unconnectButton.Importance = widget.DangerImportance
+	disconnectButton.Importance = widget.DangerImportance
 
 	refreshButton := widget.NewButton(
 		"Refresh Status",
@@ -82,7 +82,7 @@ func BuildDashboard() fyne.CanvasObject {
 
 		container.NewHBox(
 			connectButton,
-			unconnectButton,
+			disconnectButton,
 			refreshButton,
 		),
 	)
