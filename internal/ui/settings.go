@@ -1,7 +1,11 @@
 package ui
 
 import (
+	"fmt"
+
+	"vpn-manager/internal/app"
 	"vpn-manager/internal/data"
+	sshclient "vpn-manager/internal/ssh"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -90,10 +94,47 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	)
 	appearanceCard := widget.NewCard("Appearance", "", appearanceForm)
 
-	testConnectionButton := widget.NewButton(
+	var testConnectionButton *widget.Button
+	testConnectionButton = widget.NewButton(
 		"Test Connection",
 		func() {
-			// to do test connection
+			testConnectionButton.Disable()
+
+			go func() {
+				// Connect to the specified server
+				client, err := sshclient.ConnectServer()
+
+				if err != nil {
+					fyne.Do(func() {
+						dialog.ShowError(
+							fmt.Errorf("SSH connection failed: %w", err),
+							w,
+						)
+						testConnectionButton.Enable()
+					})
+					return
+				}
+
+				// Close the SSH connection after testing
+				err = client.Close()
+
+				fyne.Do(func() {
+					if err != nil {
+						dialog.ShowError(
+							fmt.Errorf("SSH connected, but closing failed: %w", err),
+							w,
+						)
+					} else {
+						dialog.ShowInformation(
+							"Connection Test",
+							"Successfully connected to the SSH server.",
+							w,
+						)
+					}
+
+					testConnectionButton.Enable()
+				})
+			}()
 		},
 	)
 
@@ -119,7 +160,24 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				return
 			}
 
-			dialog.ShowInformation("Settings", "Settings saved successfully.", w)
+			restartDialog := dialog.NewConfirm(
+				"Settings Saved",
+				"Settings have been saved successfully.\nThe application will now restart.",
+				func(confirmed bool) {
+					if !confirmed {
+						return
+					}
+
+					if err := app.RestartApp(); err != nil {
+						dialog.ShowError(err, w)
+					}
+				},
+				w,
+			)
+
+			restartDialog.SetConfirmText("Restart")
+			restartDialog.SetDismissText("Cancel")
+			restartDialog.Show()
 		},
 	)
 
