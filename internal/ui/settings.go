@@ -26,6 +26,8 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	sshKeyPath := widget.NewEntry()
 	sshKeyPath.SetPlaceHolder("e.g. C:\\Users\\Username\\.ssh\\id_rsa")
 
+	knownHostsPath := widget.NewEntry()
+
 	connectionTimeout := widget.NewEntry()
 	connectionTimeout.SetPlaceHolder("e.g. 10")
 
@@ -47,6 +49,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		sshPort.SetText(config.SSHPort)
 		sshUsername.SetText(config.SSHUsername)
 		sshKeyPath.SetText(config.SSHKeyPath)
+		knownHostsPath.SetText(config.SSHKnownHostsPath)
 		connectionTimeout.SetText(config.ConnectionTimeout)
 
 		wireguardInterface.SetText(config.WireGuardInterface)
@@ -71,6 +74,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		),
 		widget.NewForm(
 			widget.NewFormItem("SSH Key Path", sshKeyPath),
+			widget.NewFormItem("Known Hosts Path", knownHostsPath),
 		),
 	)
 	serverCard := widget.NewCard("Server Connection", "", serverForm)
@@ -101,6 +105,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				SSHPort:           sshPort.Text,
 				SSHUsername:       sshUsername.Text,
 				SSHKeyPath:        sshKeyPath.Text,
+				SSHKnownHostsPath: knownHostsPath.Text,
 				ConnectionTimeout: connectionTimeout.Text,
 
 				WireGuardInterface: wireguardInterface.Text,
