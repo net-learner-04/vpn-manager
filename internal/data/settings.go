@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"path/filepath"
 )
 
 // Specify the file path where you want to save it later
@@ -16,6 +17,7 @@ type Settings struct {
 	SSHPort           string `json:"ssh_port"`
 	SSHUsername       string `json:"ssh_username"`
 	SSHKeyPath        string `json:"ssh_key_path"`
+	SSHKnownHostsPath string `json:"known_hosts_path"`
 	ConnectionTimeout string `json:"connection_timeout"`
 
 	// WireGuard
@@ -38,6 +40,12 @@ func CreateSettingsFile() error {
 		return err
 	}
 
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	knownHostsPath := filepath.Join(homeDir, ".ssh", "known_hosts")
+
 	// Default Json Formats in Settings
 	config := Settings{
 		// Server Connection
@@ -45,6 +53,7 @@ func CreateSettingsFile() error {
 		SSHPort:           "22",
 		SSHUsername:       "",
 		SSHKeyPath:        "",
+		SSHKnownHostsPath: knownHostsPath,
 		ConnectionTimeout: "10",
 
 		// WireGuard
