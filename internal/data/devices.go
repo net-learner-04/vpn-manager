@@ -8,7 +8,7 @@ import (
 )
 
 // Specify the file path where you want to save it later
-const devicesfile = "internal/data/devices.json"
+const devicesfile = "internal/data/json/devices.json"
 
 type Device struct {
 	Name      string `json:"name"`
