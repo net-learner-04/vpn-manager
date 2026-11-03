@@ -1,76 +1,91 @@
-package data
+package ssh
 
 import (
-	"encoding/json"
-	"errors"
-	"io/fs"
+	"fmt"
+	"net"
 	"os"
+	"path/filepath"
+	"strconv"
+	"time"
+
+	"vpn-manager/internal/data"
+
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
-// Specify the file path where you want to save it later
-const devicesfile = "internal/data/json/devices.json"
+func ConnectServer() (*ssh.Client, error) {
+	settings, err := data.ReadSettingsFile()
+	if err != nil {
+		return nil, fmt.Errorf("Read settings: %w", err)
+	}
 
-type Device struct {
-	Name      string `json:"name"`
-	IP        string `json:"ip"`
-	PublicKey string `json:"public_key"`
+	sshUsername := settings.SSHUsername
+	sshKeyPath := settings.SSHKeyPath
+
+	ConnectionTimeout := settings.ConnectionTimeout
+	num, err := strconv.Atoi(ConnectionTimeout)
+	if err != nil || num <= 0 {
+		return nil, fmt.Errorf("Invalid connection timeout: %q", ConnectionTimeout)
+	}
+
+	serverAddress := settings.ServerAddress
+	sshPort := settings.SSHPort
+
+	// All Server Addresses
+	fullServer := net.JoinHostPort(serverAddress, sshPort)
+
+	// Open a file based on the SSH key path setting
+	key, err := os.ReadFile(sshKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("Read SSH private key: %w", err)
+	}
+
+	signer, err := ssh.ParsePrivateKey(key)
+	if err != nil {
+		return nil, fmt.Errorf("Parse SSH private key: %w", err)
+	}
+
+	// Verify that the server is genuine
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("Find user home directory: %w", err)
+	}
+
+	knownHostsPath := filepath.Join(homeDir, ".ssh", "known_hosts")
+	hostKeyCallback, err := knownhosts.New(knownHostsPath)
+	if err != nil {
+		return nil, fmt.Errorf("Load known_hosts: %w", err)
+	}
+
+	config := &ssh.ClientConfig{
+		User:            sshUsername,
+		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
+		HostKeyCallback: hostKeyCallback,
+		Timeout:         time.Duration(num) * time.Second,
+	}
+
+	// Connect to the specified server
+	client, err := ssh.Dial("tcp", fullServer, config)
+	if err != nil {
+		return nil, fmt.Errorf("Connect to SSH server: %w", err)
+	}
+
+	return client, nil
 }
 
-func CreateDevicesFile() error {
-	_, err := os.Stat(devicesfile)
-	if err == nil {
-		// The file already exists
-		return nil
-	}
-
-	if !errors.Is(err, fs.ErrNotExist) {
-		// Errors Other Than “File Not Found”
-		return err
-	}
-
-	// If the file doesn't exist, create it
-	if err := os.WriteFile(devicesfile, []byte("[]"), 0644); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func ReadDevicesFile() ([]Device, error) {
-	filedata, err := os.ReadFile(devicesfile)
+// Creating a Session for Executing Remote Commands
+func RunCommand(client *ssh.Client, command string) (string, error) {
+	session, err := client.NewSession()
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			if err := CreateDevicesFile(); err != nil {
-				return nil, err
-			}
-
-			filedata, err = os.ReadFile(devicesfile)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
+		return "", fmt.Errorf("Create SSH session: %w", err)
 	}
+	defer session.Close()
 
-	var data []Device
-	if err := json.Unmarshal(filedata, &data); err != nil {
-		return nil, err
-	}
-
-	return data, nil
-}
-
-func WriteDevicesFile(devices []Device) error {
-	jsondata, err := json.MarshalIndent(devices, "", "\t")
+	output, err := session.CombinedOutput(command)
 	if err != nil {
-		return err
+		return string(output), fmt.Errorf("Execute remote command: %w", err)
 	}
 
-	err = os.WriteFile(devicesfile, jsondata, 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return string(output), nil
 }
