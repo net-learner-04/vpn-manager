@@ -9,7 +9,7 @@ import (
 )
 
 // Specify the file path where you want to save it later
-const settingsfile = "internal/data/settings.json"
+const settingsfile = "internal/data/json/settings.json"
 
 type Settings struct {
 	// Server Connection
@@ -44,6 +44,7 @@ func CreateSettingsFile() error {
 	if err != nil {
 		return err
 	}
+	// Default SSH Key and Known Hosts Paths
 	knownHostsPath := filepath.Join(homeDir, ".ssh", "known_hosts")
 
 	// Default Json Formats in Settings
