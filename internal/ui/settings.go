@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"os"
 
 	"vpn-manager/internal/app"
 	"vpn-manager/internal/data"
@@ -14,6 +15,7 @@ import (
 )
 
 func BuildSettings(w fyne.Window) fyne.CanvasObject {
+	// Title label
 	title := widget.NewLabel("Settings")
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
@@ -28,7 +30,6 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	sshUsername.SetPlaceHolder("e.g. root")
 
 	sshKeyPath := widget.NewEntry()
-	sshKeyPath.SetPlaceHolder("e.g. C:\\Users\\Username\\.ssh\\id_rsa")
 
 	knownHostsPath := widget.NewEntry()
 
@@ -94,6 +95,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	)
 	appearanceCard := widget.NewCard("Appearance", "", appearanceForm)
 
+	// Test Connection button
 	var testConnectionButton *widget.Button
 	testConnectionButton = widget.NewButton(
 		"Test Connection",
@@ -138,6 +140,78 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		},
 	)
 
+	// Generate SSH Key button
+	generateSSHKeyButton := widget.NewButton(
+		"Generate SSH Key",
+		func() {
+			privateKey, publicKey, err := sshclient.GenerateSSHKey()
+			if err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+
+			// Save the generated keys to the specified paths
+			if err := sshclient.SavePrivateKey(privateKey, sshKeyPath.Text); err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+
+			// Save the public key with a .pub extension
+			if err := sshclient.SavePublicKey(
+				publicKey,
+				fmt.Sprintf("%s.pub", sshKeyPath.Text),
+			); err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+
+			dialog.ShowInformation(
+				"SSH Key Generated",
+				"SSH key pair generated and saved successfully.",
+				w,
+			)
+		},
+	)
+
+	// Register SSH Key button
+	registerSSHKeyButton := widget.NewButton(
+		"Register SSH Key",
+		func() {
+			// Connect to the specified server
+			client, err := sshclient.ConnectServer()
+			if err != nil {
+				dialog.ShowError(
+					fmt.Errorf("SSH connection failed: %w", err),
+					w,
+				)
+				return
+			}
+			defer client.Close()
+
+			// Read the public key file
+			publicKeyData, err := os.ReadFile(
+				fmt.Sprintf("%s.pub", sshKeyPath.Text),
+			)
+			if err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+
+			// Send the public key to the remote server
+			if err := sshclient.SendPublicKey(client, publicKeyData); err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+
+			dialog.ShowInformation(
+				"SSH Key Registered",
+				"SSH public key registered successfully.",
+				w,
+			)
+		},
+	)
+
+	// Save Settings button
 	saveSettingsButton := widget.NewButton(
 		"Save Settings",
 		func() {
@@ -183,6 +257,8 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 
 	buttonBox := container.NewHBox(
 		testConnectionButton,
+		generateSSHKeyButton,
+		registerSSHKeyButton,
 		saveSettingsButton,
 	)
 
