@@ -14,7 +14,7 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 	// Create the different views for the application.
 	dashboardView := BuildDashboard()
 	deviceView := BuildDevices(w)
-	logsView := BuildLogs()
+	logsView := BuildLogs(w)
 	settingsView := BuildSettings(w)
 
 	// Create a tab container to hold the different views.
