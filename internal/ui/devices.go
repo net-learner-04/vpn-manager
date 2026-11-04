@@ -2,6 +2,7 @@ package ui
 
 import (
 	"vpn-manager/internal/data"
+	"vpn-manager/internal/log"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -11,6 +12,7 @@ import (
 
 	"fmt"
 	"strings"
+	"time"
 )
 
 func BuildDevicesItem(device data.Device, status string, w fyne.Window,
@@ -59,12 +61,15 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 
 	deviceList, err := data.ReadDevicesFile()
 	if err != nil {
+		log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Devices")
 		dialog.ShowError(err, w)
 
 		return container.NewVBox(
 			widget.NewLabel("The device list cannot be loaded"),
 		)
 	}
+
+	log.WriteLog(time.Now().Format("15:04:05"), "INFO", "Device list loaded successfully", "Devices")
 
 	// Creating a Container List
 	listContainer := container.NewVBox()
@@ -86,6 +91,8 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 		}
 
 		listContainer.Refresh()
+
+		log.WriteLog(time.Now().Format("15:04:05"), "INFO", "Device list refreshed", "Devices")
 	}
 
 	searchEntry.OnChanged = func(s string) {
@@ -106,9 +113,12 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 
 		// Save JSON
 		if err := data.WriteDevicesFile(newList); err != nil {
+			log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Devices")
 			dialog.ShowError(err, w)
 			return
 		}
+
+		log.WriteLog(time.Now().Format("15:04:05"), "INFO", "Device deleted successfully: "+device.Name, "Devices")
 
 		// Memory Refresh
 		deviceList = newList
@@ -151,6 +161,7 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 
 					// Check required fields
 					if deviceName == "" || deviceIp == "" {
+						log.WriteLog(time.Now().Format("15:04:05"), "WARN", "Device name or IP address is missing", "Devices")
 						dialog.ShowError(
 							fmt.Errorf("device name and IP address are required"),
 							w,
@@ -176,9 +187,12 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 
 					// Save JSON first
 					if err := data.WriteDevicesFile(updatedDevices); err != nil {
+						log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Devices")
 						dialog.ShowError(err, w)
 						return
 					}
+
+					log.WriteLog(time.Now().Format("15:04:05"), "INFO", "Device added successfully: "+deviceName, "Devices")
 
 					// Update in-memory list after successful save
 					deviceList = updatedDevices
