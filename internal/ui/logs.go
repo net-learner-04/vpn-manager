@@ -1,21 +1,19 @@
 package ui
 
 import (
+	"os"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 
 	"strings"
+
+	"vpn-manager/internal/log"
 )
 
-type Logs struct {
-	Time    string
-	Level   string
-	Message string
-	Source  string
-}
-
-func BuildLogsItem(log Logs) fyne.CanvasObject {
+func BuildLogsItem(log log.Log) fyne.CanvasObject {
 	time := widget.NewLabel(log.Time)
 	level := widget.NewLabel(log.Level)
 	message := widget.NewLabel(log.Message)
@@ -31,35 +29,18 @@ func BuildLogsItem(log Logs) fyne.CanvasObject {
 	)
 }
 
-func BuildLogs() fyne.CanvasObject {
+func BuildLogs(w fyne.Window) fyne.CanvasObject {
 	title := widget.NewLabel("Logs")
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	// for the test
-	logList := []Logs{
-		{
-			Time:    "18:32:01",
-			Level:   "INFO",
-			Message: "Application started",
-			Source:  "Application",
-		},
-		{
-			Time:    "18:32:04",
-			Level:   "WARN",
-			Message: "Server connection not tested",
-			Source:  "Connection",
-		},
-		{
-			Time:    "11:32:04",
-			Level:   "WARN",
-			Message: "test",
-			Source:  "test",
-		},
+	logList, err := log.ReadLogs()
+	if err != nil {
+		logList = []log.Log{}
 	}
 
 	listContainer := container.NewVBox()
 
-	refreshLogList := func(logs []Logs) {
+	refreshLogList := func(logs []log.Log) {
 		listContainer.RemoveAll()
 
 		for _, log := range logs {
@@ -129,10 +110,33 @@ func BuildLogs() fyne.CanvasObject {
 	)
 	errorButton.Importance = widget.DangerImportance
 
+	refresh := func() {
+		newLogs, err := log.ReadLogs()
+		if err != nil {
+			dialog.ShowError(err, w)
+			return
+		}
+
+		logList = newLogs
+		applyLogFilters()
+	}
+
 	clearButton := widget.NewButton(
 		"Clear Logs",
 		func() {
-			// to do : clear logs
+			if err := os.WriteFile(log.LogFile, nil, 0644); err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+
+			refresh()
+		},
+	)
+
+	refreshButton := widget.NewButton(
+		"Refresh Logs",
+		func() {
+			refresh()
 		},
 	)
 
@@ -160,6 +164,7 @@ func BuildLogs() fyne.CanvasObject {
 	)
 
 	bottomContent := container.NewVBox(
+		refreshButton,
 		clearButton,
 		exportButton,
 	)
@@ -177,8 +182,8 @@ func BuildLogs() fyne.CanvasObject {
 	return logs
 }
 
-func FilterLogs(logs []Logs, keyword string) []Logs {
-	result := []Logs{}
+func FilterLogs(logs []log.Log, keyword string) []log.Log {
+	result := []log.Log{}
 
 	keyword = strings.ToLower(keyword)
 
@@ -197,8 +202,8 @@ func FilterLogs(logs []Logs, keyword string) []Logs {
 	return result
 }
 
-func FilterLogsLevel(logs []Logs, level string) []Logs {
-	result := []Logs{}
+func FilterLogsLevel(logs []log.Log, level string) []log.Log {
+	result := []log.Log{}
 
 	for _, log := range logs {
 		if level == "ALL" || strings.EqualFold(log.Level, level) {
