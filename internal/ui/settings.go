@@ -3,9 +3,11 @@ package ui
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"vpn-manager/internal/app"
 	"vpn-manager/internal/data"
+	"vpn-manager/internal/log"
 	sshclient "vpn-manager/internal/ssh"
 
 	"fyne.io/fyne/v2"
@@ -46,6 +48,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	loadConfig := func() {
 		config, err := data.ReadSettingsFile()
 		if err != nil {
+			log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Settings")
 			dialog.ShowError(err, w)
 			return
 		}
@@ -107,6 +110,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				client, err := sshclient.ConnectServer()
 
 				if err != nil {
+					log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Connection")
 					fyne.Do(func() {
 						dialog.ShowError(
 							fmt.Errorf("SSH connection failed: %w", err),
@@ -122,11 +126,13 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 
 				fyne.Do(func() {
 					if err != nil {
+						log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Connection")
 						dialog.ShowError(
 							fmt.Errorf("SSH connected, but closing failed: %w", err),
 							w,
 						)
 					} else {
+						log.WriteLog(time.Now().Format("15:04:05"), "INFO", "Successfully connected to the SSH server.", "Connection")
 						dialog.ShowInformation(
 							"Connection Test",
 							"Successfully connected to the SSH server.",
@@ -146,12 +152,14 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		func() {
 			privateKey, publicKey, err := sshclient.GenerateSSHKey()
 			if err != nil {
+				log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "SSH Key")
 				dialog.ShowError(err, w)
 				return
 			}
 
 			// Save the generated keys to the specified paths
 			if err := sshclient.SavePrivateKey(privateKey, sshKeyPath.Text); err != nil {
+				log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "SSH Key")
 				dialog.ShowError(err, w)
 				return
 			}
@@ -161,10 +169,12 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				publicKey,
 				fmt.Sprintf("%s.pub", sshKeyPath.Text),
 			); err != nil {
+				log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "SSH Key")
 				dialog.ShowError(err, w)
 				return
 			}
 
+			log.WriteLog(time.Now().Format("15:04:05"), "INFO", "SSH key pair generated and saved successfully.", "SSH Key")
 			dialog.ShowInformation(
 				"SSH Key Generated",
 				"SSH key pair generated and saved successfully.",
@@ -180,6 +190,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 			// Connect to the specified server
 			client, err := sshclient.ConnectServer()
 			if err != nil {
+				log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "SSH Key")
 				dialog.ShowError(
 					fmt.Errorf("SSH connection failed: %w", err),
 					w,
@@ -193,16 +204,19 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				fmt.Sprintf("%s.pub", sshKeyPath.Text),
 			)
 			if err != nil {
+				log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "SSH Key")
 				dialog.ShowError(err, w)
 				return
 			}
 
 			// Send the public key to the remote server
 			if err := sshclient.SendPublicKey(client, publicKeyData); err != nil {
+				log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "SSH Key")
 				dialog.ShowError(err, w)
 				return
 			}
 
+			log.WriteLog(time.Now().Format("15:04:05"), "INFO", "SSH public key registered successfully.", "SSH Key")
 			dialog.ShowInformation(
 				"SSH Key Registered",
 				"SSH public key registered successfully.",
@@ -230,9 +244,12 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 			}
 
 			if err := data.WriteSettingsFile(config); err != nil {
+				log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Settings")
 				dialog.ShowError(err, w)
 				return
 			}
+
+			log.WriteLog(time.Now().Format("15:04:05"), "INFO", "Settings saved successfully.", "Settings")
 
 			restartDialog := dialog.NewConfirm(
 				"Settings Saved",
@@ -243,6 +260,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 					}
 
 					if err := app.RestartApp(); err != nil {
+						log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Application")
 						dialog.ShowError(err, w)
 					}
 				},
