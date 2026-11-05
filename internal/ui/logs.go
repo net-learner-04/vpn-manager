@@ -1,14 +1,15 @@
 package ui
 
 import (
+	"io"
 	"os"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
-
-	"strings"
 
 	"vpn-manager/internal/log"
 )
@@ -143,7 +144,45 @@ func BuildLogs(w fyne.Window) fyne.CanvasObject {
 	exportButton := widget.NewButton(
 		"Export Logs",
 		func() {
-			// to do : export logs
+			saveDialog := dialog.NewFileSave(
+				func(writer fyne.URIWriteCloser, err error) {
+					if err != nil {
+						dialog.ShowError(err, w)
+						return
+					}
+
+					// If the user cancels the save dialog, writer will be nil
+					if writer == nil {
+						return
+					}
+					defer writer.Close()
+
+					// Copy the contents of the log file to the selected location
+					src, err := os.Open(log.LogFile)
+					if err != nil {
+						dialog.ShowError(err, w)
+						return
+					}
+					defer src.Close()
+
+					// Copy the contents of the log file to the selected location
+					if _, err := io.Copy(writer, src); err != nil {
+						dialog.ShowError(err, w)
+						return
+					}
+
+					dialog.ShowInformation(
+						"Export",
+						"Logs exported successfully.",
+						w,
+					)
+				},
+				w,
+			)
+			saveDialog.SetFileName(".txt")
+			// Set the filter to only allow .txt and .log files
+			saveDialog.SetFilter(storage.NewExtensionFileFilter([]string{".txt", ".log"}))
+			saveDialog.Show()
 		},
 	)
 
@@ -163,7 +202,8 @@ func BuildLogs(w fyne.Window) fyne.CanvasObject {
 		widget.NewSeparator(),
 	)
 
-	bottomContent := container.NewVBox(
+	bottomContent := container.NewGridWithColumns(
+		3,
 		refreshButton,
 		clearButton,
 		exportButton,
@@ -173,7 +213,10 @@ func BuildLogs(w fyne.Window) fyne.CanvasObject {
 
 	logs := container.NewBorder(
 		topContent,
-		bottomContent,
+		container.NewVBox(
+			widget.NewSeparator(),
+			bottomContent,
+		),
 		nil,
 		nil,
 		scrollableLogs,
