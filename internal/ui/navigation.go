@@ -38,6 +38,29 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 		},
 	)
 
+	connectButton := widget.NewButton(
+		"Connect",
+		func() {
+			connectionStatus.SetText("Connection: Connected")
+		},
+	)
+	connectButton.Importance = widget.HighImportance
+
+	disconnectButton := widget.NewButton(
+		"Disconnect",
+		func() {
+			connectionStatus.SetText("Connection: Disconnected")
+		},
+	)
+	disconnectButton.Importance = widget.DangerImportance
+
+	// Buttons sit at the bottom of the menu, one per row
+	footer := container.NewVBox(
+		widget.NewSeparator(),
+		connectButton,
+		disconnectButton,
+	)
+
 	menu.OnSelected = func(id widget.ListItemID) {
 		switch menuItems[id] {
 		case "Dashboard":
@@ -64,7 +87,8 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 	divider := canvas.NewRectangle(theme.Color(theme.ColorNameSeparator))
 	divider.SetMinSize(fyne.NewSize(1, 0))
 
-	left := container.NewBorder(nil, nil, nil, divider, menuWrapper)
+	// Menu on top, buttons pinned to the bottom of the left panel
+	left := container.NewBorder(nil, footer, nil, divider, menuWrapper)
 
 	split := container.NewBorder(
 		nil,
