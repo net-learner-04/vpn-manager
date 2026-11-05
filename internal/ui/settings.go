@@ -44,6 +44,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 
 	// Appearance settings form
 	closeToTray := widget.NewCheck("", func(b bool) {})
+	startMinimized := widget.NewCheck("", func(b bool) {})
 
 	loadConfig := func() {
 		config, err := data.ReadSettingsFile()
@@ -64,6 +65,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		refreshInterval.SetText(config.RefreshInterval)
 
 		closeToTray.SetChecked(config.CloseToTray)
+		startMinimized.SetChecked(config.StartMinimized)
 	}
 
 	// Load data when the program starts
@@ -95,6 +97,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 
 	appearanceForm := widget.NewForm(
 		widget.NewFormItem("Close to Tray", closeToTray),
+		widget.NewFormItem("Start Minimized", startMinimized),
 	)
 	appearanceCard := widget.NewCard("Appearance", "", appearanceForm)
 
@@ -240,7 +243,8 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				WireGuardInterface: wireguardInterface.Text,
 				RefreshInterval:    refreshInterval.Text,
 
-				CloseToTray: closeToTray.Checked,
+				CloseToTray:    closeToTray.Checked,
+				StartMinimized: startMinimized.Checked,
 			}
 
 			if err := data.WriteSettingsFile(config); err != nil {
