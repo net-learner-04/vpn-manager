@@ -222,6 +222,12 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 		},
 	)
 
+	footer := container.NewGridWithColumns(
+		2,
+		addButton,
+		refreshButton,
+	)
+
 	devices := container.NewBorder(
 		container.NewVBox(
 			title,
@@ -230,10 +236,8 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 		),
 		container.NewVBox(
 			widget.NewSeparator(),
-			addButton,
-			refreshButton,
+			footer,
 		),
-		nil,
 		nil,
 		container.NewVScroll(listContainer),
 	)
