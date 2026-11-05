@@ -273,7 +273,8 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		},
 	)
 
-	buttonBox := container.NewHBox(
+	buttonBox := container.NewGridWithColumns(
+		4,
 		testConnectionButton,
 		generateSSHKeyButton,
 		registerSSHKeyButton,
