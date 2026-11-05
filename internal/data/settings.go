@@ -25,7 +25,8 @@ type Settings struct {
 	RefreshInterval    string `json:"refresh_interval"`
 
 	// Appearance & Behavior
-	CloseToTray bool `json:"close_to_tray"`
+	CloseToTray    bool `json:"close_to_tray"`
+	StartMinimized bool `json:"start_minimized"`
 }
 
 func CreateSettingsFile() error {
@@ -62,7 +63,8 @@ func CreateSettingsFile() error {
 		RefreshInterval:    "5",
 
 		// Appearance & Behavior
-		CloseToTray: false,
+		CloseToTray:    false,
+		StartMinimized: false,
 	}
 
 	data, err := json.MarshalIndent(config, "", "\t")
