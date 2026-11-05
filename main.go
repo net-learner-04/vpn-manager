@@ -7,8 +7,8 @@ import (
 )
 
 func main() {
-	// Create a new Fyne application.
-	a := app.New()
+	// Create a new Fyne application with a unique ID
+	a := app.NewWithID("com.example.vpnmanager")
 
 	w := a.NewWindow("VPN Manager")
 
