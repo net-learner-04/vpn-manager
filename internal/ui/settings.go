@@ -281,13 +281,23 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		saveSettingsButton,
 	)
 
-	content := container.NewVBox(
+	topContent := container.NewVBox(
 		title,
 		widget.NewSeparator(),
 		serverCard,
 		container.NewGridWithColumns(2, wgCard, appearanceCard),
+	)
+
+	bottomContent := container.NewVBox(
 		widget.NewSeparator(),
 		buttonBox,
+	)
+
+	content := container.NewBorder(
+		topContent,
+		bottomContent,
+		nil,
+		nil,
 	)
 
 	return content
