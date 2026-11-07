@@ -8,6 +8,8 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+
+	"vpn-manager/internal/wireguard"
 )
 
 func BuildNavigation(w fyne.Window) fyne.CanvasObject {
@@ -41,6 +43,12 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 	connectButton := widget.NewButton(
 		"Connect",
 		func() {
+			err := wireguard.ConnectWireguard()
+			if err != nil {
+				writeLog("ERROR", "Failed to connect to WireGuard: "+err.Error())
+				return
+			}
+			writeLog("INFO", "Successfully connected to WireGuard.")
 			connectionStatus.SetText("Connection: Connected")
 		},
 	)
@@ -49,6 +57,12 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 	disconnectButton := widget.NewButton(
 		"Disconnect",
 		func() {
+			err := wireguard.DisconnectWireguard()
+			if err != nil {
+				writeLog("ERROR", "Failed to disconnect from WireGuard: "+err.Error())
+				return
+			}
+			writeLog("INFO", "Successfully disconnected from WireGuard.")
 			connectionStatus.SetText("Connection: Disconnected")
 		},
 	)
