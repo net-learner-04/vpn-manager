@@ -2,7 +2,6 @@ package ui
 
 import (
 	"vpn-manager/internal/data"
-	"vpn-manager/internal/log"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -12,7 +11,6 @@ import (
 
 	"fmt"
 	"strings"
-	"time"
 )
 
 func BuildDevicesItem(device data.Device, status string, w fyne.Window,
@@ -61,7 +59,7 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 
 	deviceList, err := data.ReadDevicesFile()
 	if err != nil {
-		log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Devices")
+		writeLog("ERROR", "failed to read devices file: "+err.Error())
 		dialog.ShowError(err, w)
 
 		return container.NewVBox(
@@ -69,7 +67,7 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 		)
 	}
 
-	log.WriteLog(time.Now().Format("15:04:05"), "INFO", "Device list loaded successfully", "Devices")
+	writeLog("INFO", "Device list loaded successfully")
 
 	// Creating a Container List
 	listContainer := container.NewVBox()
@@ -92,7 +90,7 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 
 		listContainer.Refresh()
 
-		log.WriteLog(time.Now().Format("15:04:05"), "INFO", "Device list refreshed", "Devices")
+		writeLog("INFO", "Device list refreshed")
 	}
 
 	searchEntry.OnChanged = func(s string) {
@@ -113,12 +111,12 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 
 		// Save JSON
 		if err := data.WriteDevicesFile(newList); err != nil {
-			log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Devices")
+			writeLog("ERROR", "failed to write devices file: "+err.Error())
 			dialog.ShowError(err, w)
 			return
 		}
 
-		log.WriteLog(time.Now().Format("15:04:05"), "INFO", "Device deleted successfully: "+device.Name, "Devices")
+		writeLog("INFO", "Device deleted successfully: "+device.Name)
 
 		// Memory Refresh
 		deviceList = newList
@@ -161,7 +159,7 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 
 					// Check required fields
 					if deviceName == "" || deviceIp == "" {
-						log.WriteLog(time.Now().Format("15:04:05"), "WARN", "Device name or IP address is missing", "Devices")
+						writeLog("WARN", "Device name or IP address is missing")
 						dialog.ShowError(
 							fmt.Errorf("device name and IP address are required"),
 							w,
@@ -187,12 +185,12 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 
 					// Save JSON first
 					if err := data.WriteDevicesFile(updatedDevices); err != nil {
-						log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Devices")
+						writeLog("ERROR", "failed to write devices file: "+err.Error())
 						dialog.ShowError(err, w)
 						return
 					}
 
-					log.WriteLog(time.Now().Format("15:04:05"), "INFO", "Device added successfully: "+deviceName, "Devices")
+					writeLog("INFO", "Device added successfully: "+deviceName)
 
 					// Update in-memory list after successful save
 					deviceList = updatedDevices
