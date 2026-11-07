@@ -16,6 +16,10 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+func writeLog(level string, message string) error {
+	return log.WriteLog(time.Now().Format("15:04:05"), level, message, "ui/settings.go")
+}
+
 func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	// Title label
 	title := widget.NewLabel("Settings")
@@ -49,7 +53,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	loadConfig := func() {
 		config, err := data.ReadSettingsFile()
 		if err != nil {
-			log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Settings")
+			writeLog("ERROR", err.Error())
 			dialog.ShowError(err, w)
 			return
 		}
@@ -113,7 +117,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				client, err := sshclient.ConnectServer()
 
 				if err != nil {
-					log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Connection")
+					writeLog("ERROR", "SSH connection failed: "+err.Error())
 					fyne.Do(func() {
 						dialog.ShowError(
 							fmt.Errorf("SSH connection failed: %w", err),
@@ -129,13 +133,13 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 
 				fyne.Do(func() {
 					if err != nil {
-						log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Connection")
+						writeLog("ERROR", "SSH connected, but closing failed: "+err.Error())
 						dialog.ShowError(
 							fmt.Errorf("SSH connected, but closing failed: %w", err),
 							w,
 						)
 					} else {
-						log.WriteLog(time.Now().Format("15:04:05"), "INFO", "Successfully connected to the SSH server.", "Connection")
+						writeLog("INFO", "Successfully connected to the SSH server.")
 						dialog.ShowInformation(
 							"Connection Test",
 							"Successfully connected to the SSH server.",
@@ -155,14 +159,14 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		func() {
 			privateKey, publicKey, err := sshclient.GenerateSSHKey()
 			if err != nil {
-				log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "SSH Key")
+				writeLog("ERROR", "Failed to generate SSH key: "+err.Error())
 				dialog.ShowError(err, w)
 				return
 			}
 
 			// Save the generated keys to the specified paths
 			if err := sshclient.SavePrivateKey(privateKey, sshKeyPath.Text); err != nil {
-				log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "SSH Key")
+				writeLog("ERROR", "Failed to save SSH private key: "+err.Error())
 				dialog.ShowError(err, w)
 				return
 			}
@@ -172,12 +176,12 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				publicKey,
 				fmt.Sprintf("%s.pub", sshKeyPath.Text),
 			); err != nil {
-				log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "SSH Key")
+				writeLog("ERROR", "Failed to save SSH public key: "+err.Error())
 				dialog.ShowError(err, w)
 				return
 			}
 
-			log.WriteLog(time.Now().Format("15:04:05"), "INFO", "SSH key pair generated and saved successfully.", "SSH Key")
+			writeLog("INFO", "SSH key pair generated and saved successfully.")
 			dialog.ShowInformation(
 				"SSH Key Generated",
 				"SSH key pair generated and saved successfully.",
@@ -193,7 +197,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 			// Connect to the specified server
 			client, err := sshclient.ConnectServer()
 			if err != nil {
-				log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "SSH Key")
+				writeLog("ERROR", "SSH connection failed: "+err.Error())
 				dialog.ShowError(
 					fmt.Errorf("SSH connection failed: %w", err),
 					w,
@@ -207,19 +211,19 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				fmt.Sprintf("%s.pub", sshKeyPath.Text),
 			)
 			if err != nil {
-				log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "SSH Key")
+				writeLog("ERROR", "Failed to read SSH public key: "+err.Error())
 				dialog.ShowError(err, w)
 				return
 			}
 
 			// Send the public key to the remote server
 			if err := sshclient.SendPublicKey(client, publicKeyData); err != nil {
-				log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "SSH Key")
+				writeLog("ERROR", "Failed to register SSH public key: "+err.Error())
 				dialog.ShowError(err, w)
 				return
 			}
 
-			log.WriteLog(time.Now().Format("15:04:05"), "INFO", "SSH public key registered successfully.", "SSH Key")
+			writeLog("INFO", "SSH public key registered successfully.")
 			dialog.ShowInformation(
 				"SSH Key Registered",
 				"SSH public key registered successfully.",
@@ -248,12 +252,12 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 			}
 
 			if err := data.WriteSettingsFile(config); err != nil {
-				log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Settings")
+				writeLog("ERROR", "Failed to save settings: "+err.Error())
 				dialog.ShowError(err, w)
 				return
 			}
 
-			log.WriteLog(time.Now().Format("15:04:05"), "INFO", "Settings saved successfully.", "Settings")
+			writeLog("INFO", "Settings saved successfully.")
 
 			restartDialog := dialog.NewConfirm(
 				"Settings Saved",
