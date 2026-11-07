@@ -3,6 +3,8 @@ package ui
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"time"
 
 	"vpn-manager/internal/app"
@@ -17,7 +19,15 @@ import (
 )
 
 func writeLog(level string, message string) error {
-	return log.WriteLog(time.Now().Format("15:04:05"), level, message, "ui/settings.go")
+	_, file, _, ok := runtime.Caller(1)
+	source := "unknown"
+	if ok {
+		dir := filepath.Base(filepath.Dir(file))
+		name := filepath.Base(file)
+		source = dir + "/" + name
+	}
+
+	return log.WriteLog(time.Now().Format("15:04:05"), level, message, source)
 }
 
 func BuildSettings(w fyne.Window) fyne.CanvasObject {
