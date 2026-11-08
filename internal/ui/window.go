@@ -2,10 +2,8 @@ package ui
 
 import (
 	"vpn-manager/assets"
-	"vpn-manager/internal/data"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/driver/desktop"
 )
 
@@ -19,13 +17,6 @@ func BuildWindow(a fyne.App, w fyne.Window) {
 	w.SetIcon(iconRes)
 	w.Resize(fyne.NewSize(700, 450))
 	w.SetFixedSize(true)
-
-	// Load settings
-	config, err := data.ReadSettingsFile()
-	if err != nil {
-		dialog.ShowError(err, w)
-		return
-	}
 
 	// Set up the system tray menu if the app supports it
 	if desk, ok := a.(desktop.App); ok {
@@ -43,15 +34,9 @@ func BuildWindow(a fyne.App, w fyne.Window) {
 		desk.SetSystemTrayMenu(menu)
 		desk.SetSystemTrayIcon(iconRes)
 
-		// Handle window closing based on settings
+		// Always hide to tray when the window is closed
 		w.SetCloseIntercept(func() {
-			if config.CloseToTray {
-				// Hide the window but keep the app running
-				w.Hide()
-			} else {
-				// Exit the application
-				a.Quit()
-			}
+			w.Hide()
 		})
 	}
 
