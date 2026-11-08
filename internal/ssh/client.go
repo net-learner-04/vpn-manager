@@ -1,10 +1,8 @@
 package ssh
 
 import (
-	"fmt"
 	"net"
 	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -14,19 +12,19 @@ import (
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
-func ConnectServer() (*ssh.Client, error) {
+// Common connection logic. Only the authentication method differs.
+func dial(auth []ssh.AuthMethod) (*ssh.Client, error) {
 	settings, err := data.ReadSettingsFile()
 	if err != nil {
-		return nil, fmt.Errorf("Read settings: %w", err)
+		return nil, err
 	}
 
 	sshUsername := settings.SSHUsername
-	sshKeyPath := settings.SSHKeyPath
 
 	ConnectionTimeout := settings.ConnectionTimeout
 	num, err := strconv.Atoi(ConnectionTimeout)
 	if err != nil || num <= 0 {
-		return nil, fmt.Errorf("Invalid connection timeout: %q", ConnectionTimeout)
+		return nil, err
 	}
 
 	serverAddress := settings.ServerAddress
@@ -35,32 +33,15 @@ func ConnectServer() (*ssh.Client, error) {
 	// All Server Addresses
 	fullServer := net.JoinHostPort(serverAddress, sshPort)
 
-	// Open a file based on the SSH key path setting
-	key, err := os.ReadFile(sshKeyPath)
-	if err != nil {
-		return nil, fmt.Errorf("Read SSH private key: %w", err)
-	}
-
-	signer, err := ssh.ParsePrivateKey(key)
-	if err != nil {
-		return nil, fmt.Errorf("Parse SSH private key: %w", err)
-	}
-
 	// Verify that the server is genuine
-	homeDir, err := os.UserHomeDir()
+	hostKeyCallback, err := knownhosts.New(settings.SSHKnownHostsPath)
 	if err != nil {
-		return nil, fmt.Errorf("Find user home directory: %w", err)
-	}
-
-	knownHostsPath := filepath.Join(homeDir, ".ssh", "known_hosts")
-	hostKeyCallback, err := knownhosts.New(knownHostsPath)
-	if err != nil {
-		return nil, fmt.Errorf("Load known_hosts: %w", err)
+		return nil, err
 	}
 
 	config := &ssh.ClientConfig{
 		User:            sshUsername,
-		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
+		Auth:            auth,
 		HostKeyCallback: hostKeyCallback,
 		Timeout:         time.Duration(num) * time.Second,
 	}
@@ -68,23 +49,59 @@ func ConnectServer() (*ssh.Client, error) {
 	// Connect to the specified server
 	client, err := ssh.Dial("tcp", fullServer, config)
 	if err != nil {
-		return nil, fmt.Errorf("Connect to SSH server: %w", err)
+		return nil, err
 	}
 
 	return client, nil
+}
+
+// Connect using the SSH private key (normal use)
+func ConnectServer() (*ssh.Client, error) {
+	settings, err := data.ReadSettingsFile()
+	if err != nil {
+		return nil, err
+	}
+
+	// Open a file based on the SSH key path setting
+	key, err := os.ReadFile(settings.SSHKeyPath)
+	if err != nil {
+		return nil, err
+	}
+
+	signer, err := ssh.ParsePrivateKey(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return dial([]ssh.AuthMethod{ssh.PublicKeys(signer)})
+}
+
+// Connect using a password (only for the initial key registration)
+func ConnectWithPassword(password string) (*ssh.Client, error) {
+	return dial([]ssh.AuthMethod{
+		ssh.Password(password),
+		// Some servers only allow keyboard-interactive instead of password
+		ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) ([]string, error) {
+			answers := make([]string, len(questions))
+			for i := range answers {
+				answers[i] = password
+			}
+			return answers, nil
+		}),
+	})
 }
 
 // Creating a Session for Executing Remote Commands
 func RunCommand(client *ssh.Client, command string) (string, error) {
 	session, err := client.NewSession()
 	if err != nil {
-		return "", fmt.Errorf("Create SSH session: %w", err)
+		return "", err
 	}
 	defer session.Close()
 
 	output, err := session.CombinedOutput(command)
 	if err != nil {
-		return string(output), fmt.Errorf("Execute remote command: %w", err)
+		return string(output), err
 	}
 
 	return string(output), nil
