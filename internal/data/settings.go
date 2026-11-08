@@ -27,6 +27,7 @@ type Settings struct {
 	AllowedIPs      string `json:"allowed_ips"`
 	ServerPublicKey string `json:"server_public_key"`
 	RefreshInterval string `json:"refresh_interval"`
+	VPNSubnet       string `json:"vpn_subnet"`
 }
 
 func CreateSettingsFile() error {
@@ -64,6 +65,7 @@ func CreateSettingsFile() error {
 		DNS:             "1.1.1.1",
 		AllowedIPs:      "0.0.0.0/0",
 		RefreshInterval: "5",
+		VPNSubnet:       "10.0.0.0/24",
 	}
 
 	data, err := json.MarshalIndent(config, "", "\t")
