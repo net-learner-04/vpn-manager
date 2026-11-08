@@ -1,0 +1,84 @@
+package wireguard
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"vpn-manager/internal/data"
+	sshclient "vpn-manager/internal/ssh"
+)
+
+func CreateDevice(name string, confDir string) (data.Device, error) {
+	settings, err := data.ReadSettingsFile()
+	if err != nil {
+		return data.Device{}, fmt.Errorf("Read settings: %w", err)
+	}
+
+	devices, err := data.ReadDevicesFile()
+	if err != nil {
+		return data.Device{}, fmt.Errorf("Read devices: %w", err)
+	}
+
+	client, err := sshclient.ConnectServer()
+	if err != nil {
+		return data.Device{}, err
+	}
+	defer client.Close()
+
+	// Get the server public key (only when it is not saved yet)
+	if settings.ServerPublicKey == "" {
+		key, err := GetServerPublicKey(client, settings.ServerInterface)
+		if err != nil {
+			return data.Device{}, err
+		}
+
+		settings.ServerPublicKey = key
+		if err := data.WriteSettingsFile(settings); err != nil {
+			return data.Device{}, fmt.Errorf("Save settings: %w", err)
+		}
+	}
+
+	// IPs already used locally
+	localIPs := make([]string, 0, len(devices))
+	for _, d := range devices {
+		localIPs = append(localIPs, d.IP)
+	}
+
+	ip, err := AllocateIP(client, settings.ServerInterface, settings.VPNSubnet, localIPs)
+	if err != nil {
+		return data.Device{}, err
+	}
+
+	keys, err := GenerateKeyPair()
+	if err != nil {
+		return data.Device{}, err
+	}
+
+	device := data.Device{Name: name, IP: ip, PublicKey: keys.Public}
+
+	// Render the config before touching the server, so a bad config
+	// does not leave a registered peer behind
+	conf, err := RenderClientConfig(BuildClientConfig(settings, device, keys.Private))
+	if err != nil {
+		return data.Device{}, err
+	}
+
+	if err := AddPeer(client, settings.ServerInterface, device.PublicKey, device.IP); err != nil {
+		return data.Device{}, err
+	}
+
+	// Save the config file (0600 because it contains the private key)
+	confPath := filepath.Join(confDir, name+".conf")
+	if err := os.MkdirAll(confDir, 0700); err != nil {
+		_ = RemovePeer(client, settings.ServerInterface, device.PublicKey)
+		return data.Device{}, fmt.Errorf("Create config directory: %w", err)
+	}
+
+	if err := os.WriteFile(confPath, conf, 0600); err != nil {
+		_ = RemovePeer(client, settings.ServerInterface, device.PublicKey)
+		return data.Device{}, fmt.Errorf("Save client config: %w", err)
+	}
+
+	return device, nil
+}
