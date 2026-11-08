@@ -15,8 +15,6 @@ func BuildDashboard() fyne.CanvasObject {
 	title := widget.NewLabel("Dashboard")
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	serverStatus := widget.NewLabel("Server Status: Unknown")
-
 	connectionStatus = widget.NewLabel("Connection: Disconnected")
 	peers := widget.NewLabel("Peers: 0")
 
@@ -29,7 +27,6 @@ func BuildDashboard() fyne.CanvasObject {
 	// Connection related information gets its own card, same as the Settings page
 	// Blocks are divided by the card shadow instead of separator lines
 	connectionCard := widget.NewCard("Connection", "", container.NewVBox(
-		serverStatus,
 		connectionStatus,
 		peers,
 		lasthandshake,
