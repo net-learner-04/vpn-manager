@@ -38,27 +38,21 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	// Server settings form
 	serverAddress := widget.NewEntry()
 	serverAddress.SetPlaceHolder("e.g. 192.168.0.100")
-
 	sshPort := widget.NewEntry()
 	sshPort.SetPlaceHolder("e.g. 22")
-
 	sshUsername := widget.NewEntry()
 	sshUsername.SetPlaceHolder("e.g. root")
-
 	sshKeyPath := widget.NewEntry()
-
 	knownHostsPath := widget.NewEntry()
-
 	connectionTimeout := widget.NewEntry()
 	connectionTimeout.SetPlaceHolder("e.g. 10")
 
 	// WireGuard settings form
-	wireguardInterface := widget.NewEntry()
+	serverInterface := widget.NewEntry()
 	refreshInterval := widget.NewEntry()
-
-	// Appearance settings form
-	closeToTray := widget.NewCheck("", func(b bool) {})
-	startMinimized := widget.NewCheck("", func(b bool) {})
+	wireguardPort := widget.NewEntry()
+	dns := widget.NewEntry()
+	allowedIPs := widget.NewEntry()
 
 	loadConfig := func() {
 		config, err := data.ReadSettingsFile()
@@ -68,6 +62,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 			return
 		}
 
+		// Server Connection
 		serverAddress.SetText(config.ServerAddress)
 		sshPort.SetText(config.SSHPort)
 		sshUsername.SetText(config.SSHUsername)
@@ -75,11 +70,12 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		knownHostsPath.SetText(config.SSHKnownHostsPath)
 		connectionTimeout.SetText(config.ConnectionTimeout)
 
-		wireguardInterface.SetText(config.WireGuardInterface)
+		// WireGuard
+		serverInterface.SetText(config.ServerInterface)
 		refreshInterval.SetText(config.RefreshInterval)
-
-		closeToTray.SetChecked(config.CloseToTray)
-		startMinimized.SetChecked(config.StartMinimized)
+		wireguardPort.SetText(config.WireGuardPort)
+		dns.SetText(config.DNS)
+		allowedIPs.SetText(config.AllowedIPs)
 	}
 
 	// Load data when the program starts
@@ -103,17 +99,22 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	)
 	serverCard := widget.NewCard("Server Connection", "", serverForm)
 
-	wgForm := widget.NewForm(
-		widget.NewFormItem("Interface", wireguardInterface),
-		widget.NewFormItem("Refresh Interval", refreshInterval),
+	wgForm := container.NewVBox(
+		container.NewGridWithColumns(2,
+			widget.NewForm(
+				widget.NewFormItem("Interface", serverInterface),
+				widget.NewFormItem("WireGuard Port", wireguardPort),
+			),
+			widget.NewForm(
+				widget.NewFormItem("Refresh (s)", refreshInterval),
+				widget.NewFormItem("DNS", dns),
+			),
+		),
+		widget.NewForm(
+			widget.NewFormItem("Allowed IPs", allowedIPs),
+		),
 	)
 	wgCard := widget.NewCard("WireGuard", "", wgForm)
-
-	appearanceForm := widget.NewForm(
-		widget.NewFormItem("Close to Tray", closeToTray),
-		widget.NewFormItem("Start Minimized", startMinimized),
-	)
-	appearanceCard := widget.NewCard("Appearance", "", appearanceForm)
 
 	// Test Connection button
 	var testConnectionButton *widget.Button
@@ -204,41 +205,76 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	registerSSHKeyButton := widget.NewButton(
 		"Register SSH Key",
 		func() {
-			// Connect to the specified server
-			client, err := sshclient.ConnectServer()
-			if err != nil {
+			privPath := sshKeyPath.Text
+			pubPath := fmt.Sprintf("%s.pub", privPath)
+
+			if privPath == "" {
+				dialog.ShowError(fmt.Errorf("SSH Key Path is empty"), w)
+				return
+			}
+
+			// Ask for the server password and register the key
+			askPassword := func() {
+				password := widget.NewPasswordEntry()
+				items := []*widget.FormItem{
+					widget.NewFormItem("Server Password", password),
+				}
+
+				dialog.ShowForm("Register SSH Key", "Register", "Cancel", items, func(ok bool) {
+					if !ok {
+						return
+					}
+
+					pw := password.Text
+					password.SetText("")
+
+					// Run in a goroutine so the UI thread is not blocked
+					go func() {
+						err := sshclient.RegisterKey(pw, privPath, pubPath)
+
+						// With Fyne 2.6+, wrap UI calls in fyne.Do(func() { ... })
+						if err != nil {
+							writeLog("ERROR", "Failed to register SSH key: "+err.Error())
+							dialog.ShowError(err, w)
+							return
+						}
+
+						writeLog("INFO", "SSH public key registered successfully.")
+						dialog.ShowInformation(
+							"SSH Key Registered",
+							"SSH public key registered successfully.",
+							w,
+						)
+					}()
+				}, w)
+			}
+
+			// If no key file exists, go straight to the password prompt
+			if _, err := os.Stat(privPath); err != nil {
+				askPassword()
+				return
+			}
+
+			// Try the existing key first
+			go func() {
+				client, err := sshclient.ConnectServer()
+				if err == nil {
+					client.Close()
+					writeLog("INFO", "SSH key is already registered.")
+					dialog.ShowInformation("Already Registered", "SSH key login already works.", w)
+					return
+				}
+
+				// Only ask for a password when the key was rejected
+				if sshclient.IsAuthError(err) {
+					askPassword()
+					return
+				}
+
+				// Network, known_hosts, or other errors: do not ask for a password
 				writeLog("ERROR", "SSH connection failed: "+err.Error())
-				dialog.ShowError(
-					fmt.Errorf("SSH connection failed: %w", err),
-					w,
-				)
-				return
-			}
-			defer client.Close()
-
-			// Read the public key file
-			publicKeyData, err := os.ReadFile(
-				fmt.Sprintf("%s.pub", sshKeyPath.Text),
-			)
-			if err != nil {
-				writeLog("ERROR", "Failed to read SSH public key: "+err.Error())
-				dialog.ShowError(err, w)
-				return
-			}
-
-			// Send the public key to the remote server
-			if err := sshclient.SendPublicKey(client, publicKeyData); err != nil {
-				writeLog("ERROR", "Failed to register SSH public key: "+err.Error())
-				dialog.ShowError(err, w)
-				return
-			}
-
-			writeLog("INFO", "SSH public key registered successfully.")
-			dialog.ShowInformation(
-				"SSH Key Registered",
-				"SSH public key registered successfully.",
-				w,
-			)
+				dialog.ShowError(fmt.Errorf("SSH connection failed: %w", err), w)
+			}()
 		},
 	)
 
@@ -254,11 +290,11 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				SSHKnownHostsPath: knownHostsPath.Text,
 				ConnectionTimeout: connectionTimeout.Text,
 
-				WireGuardInterface: wireguardInterface.Text,
-				RefreshInterval:    refreshInterval.Text,
-
-				CloseToTray:    closeToTray.Checked,
-				StartMinimized: startMinimized.Checked,
+				ServerInterface: serverInterface.Text,
+				WireGuardPort:   wireguardPort.Text,
+				DNS:             dns.Text,
+				AllowedIPs:      allowedIPs.Text,
+				RefreshInterval: refreshInterval.Text,
 			}
 
 			if err := data.WriteSettingsFile(config); err != nil {
@@ -303,7 +339,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		title,
 		widget.NewSeparator(),
 		serverCard,
-		container.NewGridWithColumns(2, wgCard, appearanceCard),
+		wgCard,
 	)
 
 	bottomContent := container.NewVBox(
