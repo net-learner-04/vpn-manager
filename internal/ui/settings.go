@@ -53,6 +53,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	wireguardPort := widget.NewEntry()
 	dns := widget.NewEntry()
 	allowedIPs := widget.NewEntry()
+	subnet := widget.NewEntry()
 
 	loadConfig := func() {
 		config, err := data.ReadSettingsFile()
@@ -76,6 +77,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		wireguardPort.SetText(config.WireGuardPort)
 		dns.SetText(config.DNS)
 		allowedIPs.SetText(config.AllowedIPs)
+		subnet.SetText(config.VPNSubnet)
 	}
 
 	// Load data when the program starts
@@ -103,15 +105,14 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		container.NewGridWithColumns(2,
 			widget.NewForm(
 				widget.NewFormItem("Interface", serverInterface),
-				widget.NewFormItem("WireGuard Port", wireguardPort),
-			),
-			widget.NewForm(
-				widget.NewFormItem("Refresh (s)", refreshInterval),
+				widget.NewFormItem("VPN Subnet", subnet),
 				widget.NewFormItem("DNS", dns),
 			),
-		),
-		widget.NewForm(
-			widget.NewFormItem("Allowed IPs", allowedIPs),
+			widget.NewForm(
+				widget.NewFormItem("WireGuard Port", wireguardPort),
+				widget.NewFormItem("Allowed IPs", allowedIPs),
+				widget.NewFormItem("Refresh (s)", refreshInterval),
+			),
 		),
 	)
 	wgCard := widget.NewCard("WireGuard", "", wgForm)
