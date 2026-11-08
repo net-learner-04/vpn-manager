@@ -45,7 +45,7 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 		func() {
 			err := wireguard.ConnectWireguard()
 			if err != nil {
-				writeLog("ERROR", "Failed to connect to WireGuard: "+err.Error())
+				writeLog("ERROR", err.Error())
 				return
 			}
 			writeLog("INFO", "Successfully connected to WireGuard.")
@@ -59,7 +59,7 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 		func() {
 			err := wireguard.DisconnectWireguard()
 			if err != nil {
-				writeLog("ERROR", "Failed to disconnect from WireGuard: "+err.Error())
+				writeLog("ERROR", err.Error())
 				return
 			}
 			writeLog("INFO", "Successfully disconnected from WireGuard.")
