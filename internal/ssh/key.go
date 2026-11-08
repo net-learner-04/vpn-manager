@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -60,4 +61,44 @@ func SavePublicKey(publicKey ed25519.PublicKey, filePath string) error {
 		return fmt.Errorf("Failed to save SSH public key: %w", err)
 	}
 	return nil
+}
+
+// Register the SSH key on the server using a one-time password login.
+// If a key already exists at privPath, it is reused instead of overwritten.
+func RegisterKey(password, privPath, pubPath string) error {
+	// Connect with the password (used only once, never stored)
+	client, err := ConnectWithPassword(password)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	// Generate a new key pair only if there is no existing key
+	if _, err := os.Stat(privPath); os.IsNotExist(err) {
+		privKey, pubKey, err := GenerateSSHKey()
+		if err != nil {
+			return err
+		}
+
+		if err := SavePrivateKey(privKey, privPath); err != nil {
+			return err
+		}
+
+		if err := SavePublicKey(pubKey, pubPath); err != nil {
+			return err
+		}
+	}
+
+	// Send the public key to the server's authorized_keys
+	pubBytes, err := os.ReadFile(pubPath)
+	if err != nil {
+		return fmt.Errorf("Failed to read SSH public key: %w", err)
+	}
+
+	return SendPublicKey(client, pubBytes)
+}
+
+// Check whether the error is an authentication failure
+func IsAuthError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "unable to authenticate")
 }
