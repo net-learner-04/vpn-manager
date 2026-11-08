@@ -120,7 +120,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	// Test Connection button
 	var testConnectionButton *widget.Button
 	testConnectionButton = widget.NewButton(
-		"Test Connection",
+		"Test SSH Connection",
 		func() {
 			testConnectionButton.Disable()
 
