@@ -21,12 +21,12 @@ type Settings struct {
 	ConnectionTimeout string `json:"connection_timeout"`
 
 	// WireGuard
-	WireGuardInterface string `json:"wireguard_interface"`
-	RefreshInterval    string `json:"refresh_interval"`
-
-	// Appearance & Behavior
-	CloseToTray    bool `json:"close_to_tray"`
-	StartMinimized bool `json:"start_minimized"`
+	ServerInterface string `json:"server_interface"`
+	WireGuardPort   string `json:"wireguard_port"`
+	DNS             string `json:"dns"`
+	AllowedIPs      string `json:"allowed_ips"`
+	ServerPublicKey string `json:"server_public_key"`
+	RefreshInterval string `json:"refresh_interval"`
 }
 
 func CreateSettingsFile() error {
@@ -59,12 +59,11 @@ func CreateSettingsFile() error {
 		ConnectionTimeout: "10",
 
 		// WireGuard
-		WireGuardInterface: "wg0",
-		RefreshInterval:    "5",
-
-		// Appearance & Behavior
-		CloseToTray:    false,
-		StartMinimized: false,
+		ServerInterface: "wg0",
+		WireGuardPort:   "51820",
+		DNS:             "1.1.1.1",
+		AllowedIPs:      "0.0.0.0/0",
+		RefreshInterval: "5",
 	}
 
 	data, err := json.MarshalIndent(config, "", "\t")
