@@ -2,6 +2,7 @@ package ui
 
 import (
 	"vpn-manager/internal/data"
+	"vpn-manager/internal/wireguard"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -10,6 +11,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -131,82 +134,52 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 			name := widget.NewEntry()
 			name.SetPlaceHolder("Enter The Device Name...")
 
-			ip := widget.NewEntry()
-			ip.SetPlaceHolder("Enter The IP Address...")
-
-			publickey := widget.NewEntry()
-			publickey.SetPlaceHolder("Enter The PublicKey...")
-
-			form := container.NewVBox(
-				name,
-				ip,
-				publickey,
-			)
-
 			dialog.NewCustomConfirm(
 				"Add New Device",
 				"Add",
 				"Cancel",
-				form,
+				container.NewVBox(name),
 				func(b bool) {
 					if !b {
 						return
 					}
 
 					deviceName := strings.TrimSpace(name.Text)
-					deviceIp := strings.TrimSpace(ip.Text)
-					devicePublickey := strings.TrimSpace(publickey.Text)
 
 					// Check required fields
-					if deviceName == "" || deviceIp == "" {
-						writeLog("WARN", "Device name or IP address is missing")
-						dialog.ShowError(
-							fmt.Errorf("device name and IP address are required"),
-							w,
+					if deviceName == "" {
+						writeLog("WARN", "Device name is missing")
+						dialog.ShowError(fmt.Errorf("device name is required"), w)
+						return
+					}
+
+					// Run in a goroutine so the UI thread is not blocked
+					go func() {
+						// Create the device and save it to the devices file
+						// confDir is set to a temporary directory because the config file is not needed for the UI
+						newDevice, err := wireguard.CreateDevice(deviceName, filepath.Join(os.TempDir(), "vpn-manager"))
+						if err != nil {
+							writeLog("ERROR", "failed to create device: "+err.Error())
+							dialog.ShowError(err, w)
+							return
+						}
+
+						updatedDevices := append(
+							append([]data.Device(nil), deviceList...),
+							newDevice,
 						)
-						return
-					}
 
-					// to do : Enhanced validation logic,
-					// such as IP address format validation
-					// and public key format validation
+						if err := data.WriteDevicesFile(updatedDevices); err != nil {
+							writeLog("ERROR", "failed to write devices file: "+err.Error())
+							dialog.ShowError(err, w)
+							return
+						}
 
-					newDevice := data.Device{
-						Name:      deviceName,
-						IP:        deviceIp,
-						PublicKey: devicePublickey,
-					}
+						writeLog("INFO", "Device added successfully: "+deviceName)
 
-					// Create a new list without changing the original
-					updatedDevices := append(
-						append([]data.Device(nil), deviceList...),
-						newDevice,
-					)
-
-					// Save JSON first
-					if err := data.WriteDevicesFile(updatedDevices); err != nil {
-						writeLog("ERROR", "failed to write devices file: "+err.Error())
-						dialog.ShowError(err, w)
-						return
-					}
-
-					writeLog("INFO", "Device added successfully: "+deviceName)
-
-					// Update in-memory list after successful save
-					deviceList = updatedDevices
-
-					// Refresh the device list
-					listContainer.Objects = nil
-
-					filteredDevices := FilterDevices(deviceList, searchEntry.Text)
-
-					for _, device := range filteredDevices {
-						item := BuildDevicesItem(device, "test", w, Delete)
-						listContainer.Add(item)
-						listContainer.Add(widget.NewSeparator())
-					}
-
-					listContainer.Refresh()
+						deviceList = updatedDevices
+						refreshDeviceList()
+					}()
 				},
 				w,
 			).Show()

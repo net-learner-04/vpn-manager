@@ -45,7 +45,20 @@ func CreateDevice(name string, confDir string) (data.Device, error) {
 		localIPs = append(localIPs, d.IP)
 	}
 
-	ip, err := AllocateIP(client, settings.ServerInterface, settings.VPNSubnet, localIPs)
+	// Read the real subnet from wg0 so it always matches the server, and fall
+	// back to the saved setting when the interface cannot be queried.
+	subnet := settings.VPNSubnet
+	if detected, err := GetServerSubnet(client, settings.ServerInterface); err == nil {
+		subnet = detected
+		if detected != settings.VPNSubnet {
+			settings.VPNSubnet = detected
+			if err := data.WriteSettingsFile(settings); err != nil {
+				return data.Device{}, fmt.Errorf("Save settings: %w", err)
+			}
+		}
+	}
+
+	ip, err := AllocateIP(client, settings.ServerInterface, subnet, localIPs)
 	if err != nil {
 		return data.Device{}, err
 	}

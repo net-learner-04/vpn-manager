@@ -12,7 +12,6 @@ import (
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
-// Common connection logic. Only the authentication method differs.
 func dial(auth []ssh.AuthMethod) (*ssh.Client, error) {
 	settings, err := data.ReadSettingsFile()
 	if err != nil {
@@ -55,7 +54,6 @@ func dial(auth []ssh.AuthMethod) (*ssh.Client, error) {
 	return client, nil
 }
 
-// Connect using the SSH private key (normal use)
 func ConnectServer() (*ssh.Client, error) {
 	settings, err := data.ReadSettingsFile()
 	if err != nil {
@@ -75,8 +73,6 @@ func ConnectServer() (*ssh.Client, error) {
 
 	return dial([]ssh.AuthMethod{ssh.PublicKeys(signer)})
 }
-
-// Connect using a password (only for the initial key registration)
 func ConnectWithPassword(password string) (*ssh.Client, error) {
 	return dial([]ssh.AuthMethod{
 		ssh.Password(password),
@@ -91,7 +87,6 @@ func ConnectWithPassword(password string) (*ssh.Client, error) {
 	})
 }
 
-// Creating a Session for Executing Remote Commands
 func RunCommand(client *ssh.Client, command string) (string, error) {
 	session, err := client.NewSession()
 	if err != nil {

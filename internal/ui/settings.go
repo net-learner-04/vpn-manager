@@ -296,6 +296,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				DNS:             dns.Text,
 				AllowedIPs:      allowedIPs.Text,
 				RefreshInterval: refreshInterval.Text,
+				VPNSubnet:       subnet.Text,
 			}
 
 			if err := data.WriteSettingsFile(config); err != nil {

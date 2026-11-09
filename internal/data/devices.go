@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"path/filepath"
 )
 
 // Specify the file path where you want to save it later
@@ -25,6 +26,11 @@ func CreateDevicesFile() error {
 
 	if !errors.Is(err, fs.ErrNotExist) {
 		// Errors Other Than “File Not Found”
+		return err
+	}
+
+	// Create the parent directory if it does not exist yet
+	if err := os.MkdirAll(filepath.Dir(devicesfile), 0755); err != nil {
 		return err
 	}
 

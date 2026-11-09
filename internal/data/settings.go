@@ -11,6 +11,9 @@ import (
 // Specify the file path where you want to save it later
 const settingsfile = "internal/data/json/settings.json"
 
+// Default VPN subnet used when the setting is missing or still the old value
+const defaultVPNSubnet = "10.10.10.0/24"
+
 type Settings struct {
 	// Server Connection
 	ServerAddress     string `json:"server_address"`
@@ -65,11 +68,16 @@ func CreateSettingsFile() error {
 		DNS:             "1.1.1.1",
 		AllowedIPs:      "0.0.0.0/0",
 		RefreshInterval: "5",
-		VPNSubnet:       "10.0.0.0/24",
+		VPNSubnet:       defaultVPNSubnet,
 	}
 
 	data, err := json.MarshalIndent(config, "", "\t")
 	if err != nil {
+		return err
+	}
+
+	// Create the parent directory if it does not exist yet
+	if err := os.MkdirAll(filepath.Dir(settingsfile), 0755); err != nil {
 		return err
 	}
 
@@ -98,6 +106,15 @@ func ReadSettingsFile() (Settings, error) {
 	// Convert JSON Data to a Settings Structure
 	if err := json.Unmarshal(data, &config); err != nil {
 		return config, err
+	}
+
+	// Migrate a missing or stale VPN subnet so device creation always has a
+	// subnet that matches the server.
+	if config.VPNSubnet == "" || config.VPNSubnet == "10.0.0.0/24" {
+		config.VPNSubnet = defaultVPNSubnet
+		if err := WriteSettingsFile(config); err != nil {
+			return config, err
+		}
 	}
 
 	return config, nil

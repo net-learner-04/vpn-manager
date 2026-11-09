@@ -28,7 +28,7 @@ func ConnectWireguard() error {
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		err = fmt.Errorf("failed to start WireGuard: %w - %s", err, string(output))
+		err = fmt.Errorf("%w - %s", err, string(output))
 		return err
 	}
 
@@ -49,7 +49,7 @@ func DisconnectWireguard() error {
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		err = fmt.Errorf("failed to stop WireGuard: %w - %s", err, string(output))
+		err = fmt.Errorf("%w - %s", err, string(output))
 		return err
 	}
 

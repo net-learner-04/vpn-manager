@@ -62,6 +62,36 @@ func GetUsedIPs(client *ssh.Client, iface string) (map[string]bool, error) {
 	return used, nil
 }
 
+// GetServerSubnet reads the IPv4 subnet assigned to the WireGuard interface
+// (for example 10.10.10.0/24) by parsing "ip -o -4 addr show <iface>".
+func GetServerSubnet(client *ssh.Client, iface string) (string, error) {
+	if err := validateInterface(iface); err != nil {
+		return "", err
+	}
+
+	output, err := sshclient.RunCommand(client, fmt.Sprintf("ip -o -4 addr show %s", iface))
+	if err != nil {
+		return "", fmt.Errorf("Get server subnet: %w - %s", err, output)
+	}
+
+	// Each address line contains an "inet 10.10.10.1/24" field; return the
+	// first IPv4 CIDR normalized to its network address.
+	for _, line := range strings.Split(output, "\n") {
+		for _, field := range strings.Fields(line) {
+			ip, network, err := net.ParseCIDR(field)
+			if err != nil {
+				continue
+			}
+			if ip.To4() == nil {
+				continue
+			}
+			return network.String(), nil
+		}
+	}
+
+	return "", errors.New("Get server subnet: no IPv4 address found on interface")
+}
+
 // Find the next free IP in the VPN subnet.
 func AllocateIP(client *ssh.Client, iface, subnet string, extraUsed []string) (string, error) {
 	used, err := GetUsedIPs(client, iface)
