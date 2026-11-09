@@ -1,6 +1,7 @@
 package wireguard
 
 import (
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -41,7 +42,7 @@ func GetServerStats() (ServerStats, error) {
 		ourKeys[d.PublicKey] = true
 	}
 
-	client, err := sshclient.ConnectServer()
+	client, err := sshclient.ConnectServerWithAddress(serverGatewayIP(settings.VPNSubnet))
 	if err != nil {
 		return stats, err
 	}
@@ -90,4 +91,20 @@ func GetServerStats() (ServerStats, error) {
 	}
 
 	return stats, nil
+}
+
+// serverGatewayIP returns the WireGuard gateway address (the subnet's first
+// usable host) used to reach the server through the tunnel itself.
+func serverGatewayIP(subnet string) string {
+	_, network, err := net.ParseCIDR(subnet)
+	if err != nil {
+		return ""
+	}
+
+	base := network.IP.To4()
+	if base == nil {
+		return ""
+	}
+
+	return net.IPv4(base[0], base[1], base[2], base[3]+1).String()
 }

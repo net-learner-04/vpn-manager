@@ -13,7 +13,7 @@ import (
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
-func dial(auth []ssh.AuthMethod) (*ssh.Client, error) {
+func dial(serverAddress string, auth []ssh.AuthMethod) (*ssh.Client, error) {
 	settings, err := data.ReadSettingsFile()
 	if err != nil {
 		return nil, err
@@ -27,7 +27,10 @@ func dial(auth []ssh.AuthMethod) (*ssh.Client, error) {
 		return nil, err
 	}
 
-	serverAddress := settings.ServerAddress
+	// An empty address falls back to the saved server address.
+	if serverAddress == "" {
+		serverAddress = settings.ServerAddress
+	}
 	sshPort := settings.SSHPort
 
 	// All Server Addresses
@@ -76,6 +79,12 @@ func dial(auth []ssh.AuthMethod) (*ssh.Client, error) {
 }
 
 func ConnectServer() (*ssh.Client, error) {
+	return ConnectServerWithAddress("")
+}
+
+// ConnectServerWithAddress connects to the server using an explicit address.
+// Pass an empty address to use the saved server address.
+func ConnectServerWithAddress(serverAddress string) (*ssh.Client, error) {
 	settings, err := data.ReadSettingsFile()
 	if err != nil {
 		return nil, err
@@ -92,10 +101,10 @@ func ConnectServer() (*ssh.Client, error) {
 		return nil, err
 	}
 
-	return dial([]ssh.AuthMethod{ssh.PublicKeys(signer)})
+	return dial(serverAddress, []ssh.AuthMethod{ssh.PublicKeys(signer)})
 }
 func ConnectWithPassword(password string) (*ssh.Client, error) {
-	return dial([]ssh.AuthMethod{
+	return dial("", []ssh.AuthMethod{
 		ssh.Password(password),
 		// Some servers only allow keyboard-interactive instead of password
 		ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) ([]string, error) {
