@@ -5,9 +5,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"fyne.io/fyne/v2/app"
 
+	applog "vpn-manager/internal/log"
 	"vpn-manager/internal/ui"
 	"vpn-manager/internal/wireguard"
 
@@ -27,6 +29,8 @@ func main() {
 
 		if err := tunnel.Run(confPath); err != nil {
 			log.Println(err)
+			_ = applog.CreateLogFile()
+			_ = applog.WriteLog(time.Now().Format("15:04:05"), "ERROR", "Tunnel service failed: "+err.Error(), "main")
 			os.Exit(1)
 		}
 		return
