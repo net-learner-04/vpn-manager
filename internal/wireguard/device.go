@@ -3,13 +3,17 @@ package wireguard
 import (
 	"fmt"
 	"os"
-	"path/filepath"
+	"strings"
 
 	"vpn-manager/internal/data"
 	sshclient "vpn-manager/internal/ssh"
 )
 
-func CreateDevice(name string, confDir string) (data.Device, error) {
+func CreateDevice(name string) (data.Device, error) {
+	if err := ValidateDeviceName(name); err != nil {
+		return data.Device{}, err
+	}
+
 	settings, err := data.ReadSettingsFile()
 	if err != nil {
 		return data.Device{}, fmt.Errorf("Read settings: %w", err)
@@ -18,6 +22,13 @@ func CreateDevice(name string, confDir string) (data.Device, error) {
 	devices, err := data.ReadDevicesFile()
 	if err != nil {
 		return data.Device{}, fmt.Errorf("Read devices: %w", err)
+	}
+
+	// Reject duplicate names (file names are case-insensitive on Windows)
+	for _, d := range devices {
+		if strings.EqualFold(d.Name, name) {
+			return data.Device{}, fmt.Errorf("Device name already exists: %s", name)
+		}
 	}
 
 	client, err := sshclient.ConnectServer()
@@ -81,11 +92,17 @@ func CreateDevice(name string, confDir string) (data.Device, error) {
 		return data.Device{}, err
 	}
 
-	// Save the config file (0600 because it contains the private key)
-	confPath := filepath.Join(confDir, name+".conf")
+	// Save the config file. The directory is restricted to SYSTEM and
+	// Administrators because the file contains the private key.
+	confDir := data.ConfDir()
+	confPath := data.ConfPath(name)
 	if err := os.MkdirAll(confDir, 0700); err != nil {
 		_ = RemovePeer(client, settings.ServerInterface, device.PublicKey)
 		return data.Device{}, fmt.Errorf("Create config directory: %w", err)
+	}
+	if err := data.SecureConfDir(confDir); err != nil {
+		_ = RemovePeer(client, settings.ServerInterface, device.PublicKey)
+		return data.Device{}, fmt.Errorf("Restrict config directory: %w", err)
 	}
 
 	if err := os.WriteFile(confPath, conf, 0600); err != nil {

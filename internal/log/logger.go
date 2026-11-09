@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"vpn-manager/internal/data"
 )
 
 // This file contains the logger implementation for the application.
-const LogFile = "internal/log/logs/vpn-manager.log"
+var LogFile = data.LogPath()
 
 type Log struct {
 	Time    string
@@ -30,10 +33,8 @@ func CreateLogFile() error {
 		return err
 	}
 
-	dirPath := "internal/log/logs"
-
 	// Create the directory if it doesn't exist
-	if err := os.MkdirAll(dirPath, 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(LogFile), 0755); err != nil {
 		return err
 	}
 
@@ -43,6 +44,15 @@ func CreateLogFile() error {
 	}
 
 	return nil
+}
+
+// sanitize collapses line breaks and consecutive spaces so a log entry stays
+// on a single line and can always be parsed back by ReadLogs.
+func sanitize(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", " ")
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", " ")
+	return strings.Join(strings.Fields(s), " ")
 }
 
 func WriteLog(time, level, message, source string) error {
@@ -60,7 +70,7 @@ func WriteLog(time, level, message, source string) error {
 	}
 
 	// Write the log entry to the file
-	logEntry := fmt.Sprintf("%s [%s] %s (%s)\n", data.Time, data.Level, data.Message, data.Source)
+	logEntry := fmt.Sprintf("%s [%s] %s (%s)\n", data.Time, data.Level, sanitize(data.Message), data.Source)
 
 	if _, err := file.WriteString(logEntry); err != nil {
 		file.Close()

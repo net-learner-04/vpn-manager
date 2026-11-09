@@ -2,56 +2,99 @@ package wireguard
 
 import (
 	"errors"
-	"fmt"
-	"os/exec"
+	"os"
+
+	"golang.org/x/sys/windows"
+	"golang.org/x/sys/windows/svc"
+	"golang.org/x/sys/windows/svc/mgr"
+	"golang.zx2c4.com/wireguard/windows/conf"
 )
 
-func ConnectWireguard() error {
-	if installed, err := IsWireGuardInstalled(); err != nil {
-		return err
-	} else if !installed {
-		// WireGuard is not installed, cannot connect
-		err := errors.New("WireGuard is not installed")
-		return err
-	}
-
-	// Start the WireGuard service using the Windows Service Control Manager (sc.exe)
-	if active, err := IsWireGuardRunning(); err != nil {
-		return err
-	} else if active {
-		// WireGuard is already running, no need to start it again
-		return nil
-	}
-
-	// Start the WireGuard service using the Windows Service Control Manager (sc.exe)
-	cmd := exec.Command("sc.exe", "start", "WireGuardTunnel$vpn-manager")
-	output, err := cmd.CombinedOutput()
-
+// serviceNameForPath returns the Windows service name for a config path.
+func serviceNameForPath(confPath string) (string, error) {
+	name, err := conf.NameFromPath(confPath)
 	if err != nil {
-		err = fmt.Errorf("%w - %s", err, string(output))
-		return err
+		return "", err
 	}
-
-	return nil
+	return conf.ServiceNameOfTunnel(name)
 }
 
-func DisconnectWireguard() error {
-	// Stop the WireGuard service using the Windows Service Control Manager (sc.exe)
-	if active, err := IsWireGuardRunning(); err != nil {
+func ConnectWireguard(confPath string) error {
+	serviceName, err := serviceNameForPath(confPath)
+	if err != nil {
 		return err
-	} else if !active {
-		// WireGuard is not running, no need to stop it
+	}
+
+	m, err := mgr.Connect()
+	if err != nil {
+		return err
+	}
+	defer m.Disconnect()
+
+	service, err := m.OpenService(serviceName)
+	if err != nil {
+		if !errors.Is(err, windows.ERROR_SERVICE_DOES_NOT_EXIST) {
+			return err
+		}
+
+		// Create the service if it does not exist yet
+		exe, err := os.Executable()
+		if err != nil {
+			return err
+		}
+
+		service, err = m.CreateService(serviceName, exe, mgr.Config{
+			StartType:   mgr.StartManual,
+			DisplayName: serviceName,
+		}, "/tunnelservice", confPath)
+		if err != nil {
+			return err
+		}
+	}
+	defer service.Close()
+
+	status, err := service.Query()
+	if err != nil {
+		return err
+	}
+	if status.State == svc.Running {
 		return nil
 	}
 
-	// Stop the WireGuard service using the Windows Service Control Manager (sc.exe)
-	cmd := exec.Command("sc.exe", "stop", "WireGuardTunnel$vpn-manager")
-	output, err := cmd.CombinedOutput()
+	return service.Start()
+}
 
+func DisconnectWireguard(confPath string) error {
+	serviceName, err := serviceNameForPath(confPath)
 	if err != nil {
-		err = fmt.Errorf("%w - %s", err, string(output))
 		return err
 	}
 
-	return nil
+	m, err := mgr.Connect()
+	if err != nil {
+		return err
+	}
+	defer m.Disconnect()
+
+	service, err := m.OpenService(serviceName)
+	if err != nil {
+		// The service does not exist, so there is nothing to disconnect
+		if errors.Is(err, windows.ERROR_SERVICE_DOES_NOT_EXIST) {
+			return nil
+		}
+		return err
+	}
+	defer service.Close()
+
+	status, err := service.Query()
+	if err != nil {
+		return err
+	}
+	if status.State != svc.Stopped {
+		if _, err := service.Control(svc.Stop); err != nil {
+			return err
+		}
+	}
+
+	return service.Delete()
 }

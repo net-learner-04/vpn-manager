@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"errors"
 	"net"
 	"os"
 	"strconv"
@@ -32,10 +33,30 @@ func dial(auth []ssh.AuthMethod) (*ssh.Client, error) {
 	// All Server Addresses
 	fullServer := net.JoinHostPort(serverAddress, sshPort)
 
-	// Verify that the server is genuine
-	hostKeyCallback, err := knownhosts.New(settings.SSHKnownHostsPath)
+	// Verify that the server is genuine. On first contact the host key is
+	// returned as a HostKeyError so the UI can ask the user to approve it.
+	baseCallback, err := knownhosts.New(settings.SSHKnownHostsPath)
 	if err != nil {
 		return nil, err
+	}
+
+	hostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		err := baseCallback(hostname, remote, key)
+		if err == nil {
+			return nil
+		}
+
+		var keyErr *knownhosts.KeyError
+		if errors.As(err, &keyErr) && len(keyErr.Want) == 0 {
+			// Unknown host key (first contact)
+			return &HostKeyError{
+				Address:     hostname,
+				Fingerprint: ssh.FingerprintSHA256(key),
+				Key:         key,
+			}
+		}
+
+		return err
 	}
 
 	config := &ssh.ClientConfig{
@@ -100,4 +121,33 @@ func RunCommand(client *ssh.Client, command string) (string, error) {
 	}
 
 	return string(output), nil
+}
+
+// HostKeyError reports an unknown server host key so the UI can ask the user
+// to approve the first connection.
+type HostKeyError struct {
+	Address     string
+	Fingerprint string
+	Key         ssh.PublicKey
+}
+
+func (e *HostKeyError) Error() string {
+	return "Unknown host key for " + e.Address + ": " + e.Fingerprint
+}
+
+// TrustHostKey appends the server key to the known_hosts file.
+func TrustHostKey(address string, key ssh.PublicKey) error {
+	settings, err := data.ReadSettingsFile()
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(settings.SSHKnownHostsPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(knownhosts.Line([]string{address}, key))
+	return err
 }

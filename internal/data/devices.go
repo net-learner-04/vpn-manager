@@ -8,9 +8,6 @@ import (
 	"path/filepath"
 )
 
-// Specify the file path where you want to save it later
-const devicesfile = "internal/data/json/devices.json"
-
 type Device struct {
 	Name      string `json:"name"`
 	IP        string `json:"ip"`
@@ -18,7 +15,9 @@ type Device struct {
 }
 
 func CreateDevicesFile() error {
-	_, err := os.Stat(devicesfile)
+	path := DevicesPath()
+
+	_, err := os.Stat(path)
 	if err == nil {
 		// The file already exists
 		return nil
@@ -29,13 +28,18 @@ func CreateDevicesFile() error {
 		return err
 	}
 
+	// Migrate the legacy devices file if it still exists
+	if migrateLegacyFile(legacyDevicesFile, path) {
+		return nil
+	}
+
 	// Create the parent directory if it does not exist yet
-	if err := os.MkdirAll(filepath.Dir(devicesfile), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
 
 	// If the file doesn't exist, create it
-	if err := os.WriteFile(devicesfile, []byte("[]"), 0644); err != nil {
+	if err := os.WriteFile(path, []byte("[]"), 0644); err != nil {
 		return err
 	}
 
@@ -43,14 +47,14 @@ func CreateDevicesFile() error {
 }
 
 func ReadDevicesFile() ([]Device, error) {
-	filedata, err := os.ReadFile(devicesfile)
+	filedata, err := os.ReadFile(DevicesPath())
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			if err := CreateDevicesFile(); err != nil {
 				return nil, err
 			}
 
-			filedata, err = os.ReadFile(devicesfile)
+			filedata, err = os.ReadFile(DevicesPath())
 			if err != nil {
 				return nil, err
 			}
@@ -73,7 +77,7 @@ func WriteDevicesFile(devices []Device) error {
 		return err
 	}
 
-	err = os.WriteFile(devicesfile, jsondata, 0644)
+	err = os.WriteFile(DevicesPath(), jsondata, 0644)
 	if err != nil {
 		return err
 	}

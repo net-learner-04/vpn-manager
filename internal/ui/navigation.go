@@ -1,14 +1,17 @@
 package ui
 
 import (
+	"fmt"
 	"image/color"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
+	"vpn-manager/internal/data"
 	"vpn-manager/internal/wireguard"
 )
 
@@ -40,16 +43,63 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 		},
 	)
 
+	// Device selector for connecting/disconnecting a specific tunnel
+	deviceSelect := widget.NewSelect([]string{}, func(string) {})
+	deviceSelect.PlaceHolder = "Select device"
+
+	loadDeviceOptions := func() {
+		devices, err := data.ReadDevicesFile()
+		if err != nil {
+			devices = []data.Device{}
+		}
+
+		names := make([]string, 0, len(devices))
+		for _, d := range devices {
+			names = append(names, d.Name)
+		}
+
+		// Clear the selection when the selected device no longer exists
+		stillExists := false
+		for _, n := range names {
+			if n == deviceSelect.Selected {
+				stillExists = true
+				break
+			}
+		}
+		if !stillExists {
+			deviceSelect.Selected = ""
+		}
+
+		deviceSelect.Options = names
+		deviceSelect.Refresh()
+	}
+	loadDeviceOptions()
+
 	connectButton := widget.NewButton(
 		"Connect",
 		func() {
-			err := wireguard.ConnectWireguard()
-			if err != nil {
-				writeLog("ERROR", err.Error())
+			loadDeviceOptions()
+
+			name := deviceSelect.Selected
+			if name == "" {
+				writeLog("WARN", "No device selected")
+				dialog.ShowError(fmt.Errorf("Select a device to connect"), w)
 				return
 			}
-			writeLog("INFO", "Successfully connected to WireGuard.")
-			connectionStatus.SetText("Connection: Connected")
+
+			go func() {
+				err := wireguard.ConnectWireguard(data.ConfPath(name))
+
+				fyne.Do(func() {
+					if err != nil {
+						writeLog("ERROR", err.Error())
+						dialog.ShowError(err, w)
+						return
+					}
+					writeLog("INFO", "Successfully connected to WireGuard.")
+					connectionStatus.SetText("Connection: Connected")
+				})
+			}()
 		},
 	)
 	connectButton.Importance = widget.HighImportance
@@ -57,13 +107,28 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 	disconnectButton := widget.NewButton(
 		"Disconnect",
 		func() {
-			err := wireguard.DisconnectWireguard()
-			if err != nil {
-				writeLog("ERROR", err.Error())
+			loadDeviceOptions()
+
+			name := deviceSelect.Selected
+			if name == "" {
+				writeLog("WARN", "No device selected")
+				dialog.ShowError(fmt.Errorf("Select a device to disconnect"), w)
 				return
 			}
-			writeLog("INFO", "Successfully disconnected from WireGuard.")
-			connectionStatus.SetText("Connection: Disconnected")
+
+			go func() {
+				err := wireguard.DisconnectWireguard(data.ConfPath(name))
+
+				fyne.Do(func() {
+					if err != nil {
+						writeLog("ERROR", err.Error())
+						dialog.ShowError(err, w)
+						return
+					}
+					writeLog("INFO", "Successfully disconnected from WireGuard.")
+					connectionStatus.SetText("Connection: Disconnected")
+				})
+			}()
 		},
 	)
 	disconnectButton.Importance = widget.DangerImportance
@@ -71,6 +136,7 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 	// Buttons sit at the bottom of the menu, one per row
 	footer := container.NewVBox(
 		widget.NewSeparator(),
+		deviceSelect,
 		connectButton,
 		disconnectButton,
 	)

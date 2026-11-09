@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -28,6 +29,12 @@ func writeLog(level string, message string) error {
 	}
 
 	return log.WriteLog(time.Now().Format("15:04:05"), level, message, source)
+}
+
+// handleError logs an error and shows it in a dialog.
+func handleError(w fyne.Window, message string, err error) {
+	writeLog("ERROR", message+": "+err.Error())
+	dialog.ShowError(err, w)
 }
 
 func BuildSettings(w fyne.Window) fyne.CanvasObject {
@@ -119,51 +126,70 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 
 	// Test Connection button
 	var testConnectionButton *widget.Button
-	testConnectionButton = widget.NewButton(
-		"Test SSH Connection",
-		func() {
-			testConnectionButton.Disable()
 
-			go func() {
-				// Connect to the specified server
-				client, err := sshclient.ConnectServer()
+	var testConnection func()
+	testConnection = func() {
+		testConnectionButton.Disable()
 
-				if err != nil {
-					writeLog("ERROR", "SSH connection failed: "+err.Error())
+		go func() {
+			// Connect to the specified server
+			client, err := sshclient.ConnectServer()
+
+			if err != nil {
+				var hostKeyErr *sshclient.HostKeyError
+				if errors.As(err, &hostKeyErr) {
+					// First contact: ask the user to trust the server key
 					fyne.Do(func() {
-						dialog.ShowError(
-							fmt.Errorf("SSH connection failed: %w", err),
+						dialog.NewConfirm(
+							"Unknown Server",
+							"First connection to this server.\nFingerprint: "+hostKeyErr.Fingerprint+"\n\nTrust this server?",
+							func(trust bool) {
+								if !trust {
+									testConnectionButton.Enable()
+									return
+								}
+
+								if err := sshclient.TrustHostKey(hostKeyErr.Address, hostKeyErr.Key); err != nil {
+									handleError(w, "Failed to save host key", err)
+									testConnectionButton.Enable()
+									return
+								}
+
+								// Retry now that the key is trusted
+								go testConnection()
+							},
 							w,
-						)
-						testConnectionButton.Enable()
+						).Show()
 					})
 					return
 				}
 
-				// Close the SSH connection after testing
-				err = client.Close()
-
+				writeLog("ERROR", "SSH connection failed: "+err.Error())
 				fyne.Do(func() {
-					if err != nil {
-						writeLog("ERROR", "SSH connected, but closing failed: "+err.Error())
-						dialog.ShowError(
-							fmt.Errorf("SSH connected, but closing failed: %w", err),
-							w,
-						)
-					} else {
-						writeLog("INFO", "Successfully connected to the SSH server.")
-						dialog.ShowInformation(
-							"Connection Test",
-							"Successfully connected to the SSH server.",
-							w,
-						)
-					}
-
+					dialog.ShowError(fmt.Errorf("SSH connection failed: %w", err), w)
 					testConnectionButton.Enable()
 				})
-			}()
-		},
-	)
+				return
+			}
+
+			// Close the SSH connection after testing
+			err = client.Close()
+
+			fyne.Do(func() {
+				if err != nil {
+					writeLog("ERROR", "SSH connected, but closing failed: "+err.Error())
+					dialog.ShowError(fmt.Errorf("SSH connected, but closing failed: %w", err), w)
+				} else {
+					writeLog("INFO", "Successfully connected to the SSH server.")
+					dialog.ShowInformation("Connection Test", "Successfully connected to the SSH server.", w)
+				}
+
+				testConnectionButton.Enable()
+			})
+		}()
+	}
+
+	testConnectionButton = widget.NewButton("Test SSH Connection", testConnection)
 
 	// Generate SSH Key button
 	generateSSHKeyButton := widget.NewButton(

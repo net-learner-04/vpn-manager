@@ -1,6 +1,10 @@
 package ui
 
 import (
+	"errors"
+	"fmt"
+	"strings"
+
 	"vpn-manager/internal/data"
 	"vpn-manager/internal/wireguard"
 
@@ -9,11 +13,6 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 func BuildDevicesItem(device data.Device, status string, w fyne.Window,
@@ -100,7 +99,7 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 		refreshDeviceList()
 	}
 
-	Delete = func(device data.Device) {
+	removeDeviceFromList := func(device data.Device) {
 		// Save only devices that are not scheduled for deletion to the new list
 		newList := []data.Device{}
 
@@ -128,6 +127,37 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 		refreshDeviceList()
 	}
 
+	Delete = func(device data.Device) {
+		// Run network work in a goroutine so the UI thread is not blocked
+		go func() {
+			err := wireguard.DeleteDevice(device)
+
+			fyne.Do(func() {
+				if err != nil && !errors.Is(err, wireguard.ErrServerConnectionFailed) {
+					handleError(w, "Failed to delete device", err)
+					return
+				}
+
+				if err != nil {
+					// The server was unreachable; offer to drop the local entry only
+					dialog.NewConfirm(
+						"Delete Device",
+						"Could not connect to the server. Delete only the local entry?",
+						func(confirmed bool) {
+							if confirmed {
+								removeDeviceFromList(device)
+							}
+						},
+						w,
+					).Show()
+					return
+				}
+
+				removeDeviceFromList(device)
+			})
+		}()
+	}
+
 	addButton := widget.NewButton(
 		"Add New Device",
 		func() {
@@ -153,11 +183,16 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 						return
 					}
 
+					if err := wireguard.ValidateDeviceName(deviceName); err != nil {
+						writeLog("WARN", err.Error())
+						dialog.ShowError(err, w)
+						return
+					}
+
 					// Run in a goroutine so the UI thread is not blocked
 					go func() {
 						// Create the device and save it to the devices file
-						// confDir is set to a temporary directory because the config file is not needed for the UI
-						newDevice, err := wireguard.CreateDevice(deviceName, filepath.Join(os.TempDir(), "vpn-manager"))
+						newDevice, err := wireguard.CreateDevice(deviceName)
 						if err != nil {
 							writeLog("ERROR", "failed to create device: "+err.Error())
 							dialog.ShowError(err, w)

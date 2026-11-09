@@ -8,9 +8,6 @@ import (
 	"path/filepath"
 )
 
-// Specify the file path where you want to save it later
-const settingsfile = "internal/data/json/settings.json"
-
 // Default VPN subnet used when the setting is missing or still the old value
 const defaultVPNSubnet = "10.10.10.0/24"
 
@@ -34,7 +31,9 @@ type Settings struct {
 }
 
 func CreateSettingsFile() error {
-	_, err := os.Stat(settingsfile)
+	path := SettingsPath()
+
+	_, err := os.Stat(path)
 	if err == nil {
 		// The file already exists
 		return nil
@@ -43,6 +42,11 @@ func CreateSettingsFile() error {
 	if !errors.Is(err, fs.ErrNotExist) {
 		// Errors Other Than “File Not Found”
 		return err
+	}
+
+	// Migrate the legacy settings file if it still exists
+	if migrateLegacyFile(legacySettingsFile, path) {
+		return nil
 	}
 
 	homeDir, err := os.UserHomeDir()
@@ -77,12 +81,12 @@ func CreateSettingsFile() error {
 	}
 
 	// Create the parent directory if it does not exist yet
-	if err := os.MkdirAll(filepath.Dir(settingsfile), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
 
 	// If the file doesn't exist, create it
-	if err := os.WriteFile(settingsfile, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0644); err != nil {
 		return err
 	}
 
@@ -98,7 +102,7 @@ func ReadSettingsFile() (Settings, error) {
 	}
 
 	// Reading a JSON File
-	data, err := os.ReadFile(settingsfile)
+	data, err := os.ReadFile(SettingsPath())
 	if err != nil {
 		return config, err
 	}
@@ -128,7 +132,7 @@ func WriteSettingsFile(config Settings) error {
 	}
 
 	// Save JSON file
-	err = os.WriteFile(settingsfile, jsondata, 0644)
+	err = os.WriteFile(SettingsPath(), jsondata, 0644)
 	if err != nil {
 		return err
 	}
