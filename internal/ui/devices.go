@@ -61,8 +61,7 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 
 	deviceList, err := data.ReadDevicesFile()
 	if err != nil {
-		writeLog("ERROR", "failed to read devices file: "+err.Error())
-		dialog.ShowError(err, w)
+		handleError(w, "failed to read devices file", err)
 
 		return container.NewVBox(
 			widget.NewLabel("The device list cannot be loaded"),
@@ -113,8 +112,7 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 
 		// Save JSON
 		if err := data.WriteDevicesFile(newList); err != nil {
-			writeLog("ERROR", "failed to write devices file: "+err.Error())
-			dialog.ShowError(err, w)
+			handleError(w, "failed to write devices file", err)
 			return
 		}
 
@@ -179,13 +177,13 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 					// Check required fields
 					if deviceName == "" {
 						writeLog("WARN", "Device name is missing")
-						dialog.ShowError(fmt.Errorf("device name is required"), w)
+						showError(w, fmt.Errorf("device name is required"))
 						return
 					}
 
 					if err := wireguard.ValidateDeviceName(deviceName); err != nil {
 						writeLog("WARN", err.Error())
-						dialog.ShowError(err, w)
+						showError(w, err)
 						return
 					}
 
@@ -194,8 +192,7 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 						// Create the device and save it to the devices file
 						newDevice, err := wireguard.CreateDevice(deviceName)
 						if err != nil {
-							writeLog("ERROR", "failed to create device: "+err.Error())
-							dialog.ShowError(err, w)
+							handleError(w, "failed to create device", err)
 							return
 						}
 
@@ -205,8 +202,7 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 						)
 
 						if err := data.WriteDevicesFile(updatedDevices); err != nil {
-							writeLog("ERROR", "failed to write devices file: "+err.Error())
-							dialog.ShowError(err, w)
+							handleError(w, "failed to write devices file", err)
 							return
 						}
 

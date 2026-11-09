@@ -1,7 +1,13 @@
 package ui
 
 import (
+	"fmt"
 	"image/color"
+	"strconv"
+	"time"
+
+	"vpn-manager/internal/data"
+	"vpn-manager/internal/wireguard"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -9,34 +15,41 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-var connectionStatus *widget.Label
+var (
+	connectionStatus *widget.Label
+	peersLabel       *widget.Label
+	downloadLabel    *widget.Label
+	uploadLabel      *widget.Label
+	handshakeLabel   *widget.Label
+	totalLabel       *widget.Label
+)
 
 func BuildDashboard() fyne.CanvasObject {
 	title := widget.NewLabel("Dashboard")
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
 	connectionStatus = widget.NewLabel("Connection: Disconnected")
-	peers := widget.NewLabel("Peers: 0")
+	peersLabel = widget.NewLabel("Peers: 0")
 
-	download := widget.NewLabel("Download: 0 B/s")
-	upload := widget.NewLabel("Upload: 0 B/s")
+	downloadLabel = widget.NewLabel("Download: 0 B")
+	uploadLabel = widget.NewLabel("Upload: 0 B")
 
-	lasthandshake := widget.NewLabel("Last Handshake: N/A")
-	totaltraffic := widget.NewLabel("Total Traffic: 0 B")
+	handshakeLabel = widget.NewLabel("Last Handshake: N/A")
+	totalLabel = widget.NewLabel("Total Traffic: 0 B")
 
 	// Connection related information gets its own card, same as the Settings page
 	// Blocks are divided by the card shadow instead of separator lines
 	connectionCard := widget.NewCard("Connection", "", container.NewVBox(
 		connectionStatus,
-		peers,
-		lasthandshake,
+		peersLabel,
+		handshakeLabel,
 	))
 
 	// Transfer related information gets a separate card next to it
 	transferCard := widget.NewCard("Transfer", "", container.NewVBox(
-		download,
-		upload,
-		totaltraffic,
+		downloadLabel,
+		uploadLabel,
+		totalLabel,
 	))
 
 	// Place the two cards side by side
@@ -56,6 +69,78 @@ func BuildDashboard() fyne.CanvasObject {
 	// The graph takes all the remaining space below the header
 	dashboard := container.NewBorder(header, nil, nil, nil, buildGraphs())
 	return dashboard
+}
+
+// RefreshDashboard updates the dashboard labels with real data.
+func RefreshDashboard() {
+	// Peer count comes from the local device list
+	if devices, err := data.ReadDevicesFile(); err == nil && peersLabel != nil {
+		peersLabel.SetText(fmt.Sprintf("Peers: %d", len(devices)))
+	}
+
+	// Server statistics are queried in the background so the UI stays responsive
+	go func() {
+		stats, err := wireguard.GetServerStats()
+		if err != nil {
+			return
+		}
+
+		fyne.Do(func() {
+			if downloadLabel == nil {
+				return
+			}
+
+			downloadLabel.SetText("Download: " + formatBytes(stats.TotalRx))
+			uploadLabel.SetText("Upload: " + formatBytes(stats.TotalTx))
+			totalLabel.SetText("Total Traffic: " + formatBytes(stats.TotalRx+stats.TotalTx))
+
+			if stats.LastHandshake.IsZero() {
+				handshakeLabel.SetText("Last Handshake: N/A")
+			} else {
+				handshakeLabel.SetText("Last Handshake: " + stats.LastHandshake.Format("15:04:05"))
+			}
+		})
+	}()
+}
+
+// StartDashboardRefresh refreshes the dashboard labels on a timer.
+func StartDashboardRefresh() {
+	go func() {
+		RefreshDashboard()
+		for {
+			time.Sleep(refreshInterval())
+			RefreshDashboard()
+		}
+	}()
+}
+
+// refreshInterval returns the configured dashboard refresh interval.
+func refreshInterval() time.Duration {
+	settings, err := data.ReadSettingsFile()
+	if err != nil {
+		return 5 * time.Second
+	}
+
+	seconds, err := strconv.Atoi(settings.RefreshInterval)
+	if err != nil || seconds <= 0 {
+		return 5 * time.Second
+	}
+
+	return time.Duration(seconds) * time.Second
+}
+
+// formatBytes formats a byte count in a human readable way.
+func formatBytes(n uint64) string {
+	switch {
+	case n >= 1<<30:
+		return fmt.Sprintf("%.2f GiB", float64(n)/(1<<30))
+	case n >= 1<<20:
+		return fmt.Sprintf("%.2f MiB", float64(n)/(1<<20))
+	case n >= 1<<10:
+		return fmt.Sprintf("%.2f KiB", float64(n)/(1<<10))
+	default:
+		return fmt.Sprintf("%d B", n)
+	}
 }
 
 func buildGraphs() fyne.CanvasObject {

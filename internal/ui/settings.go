@@ -35,7 +35,21 @@ func writeLog(level string, message string) error {
 // handleError logs an error and shows it in a dialog.
 func handleError(w fyne.Window, message string, err error) {
 	writeLog("ERROR", message+": "+err.Error())
-	dialog.ShowError(err, w)
+	showError(w, err)
+}
+
+// showError displays an error in a dialog that wraps long messages instead of
+// stretching the window.
+func showError(w fyne.Window, err error) {
+	message := err.Error()
+	if len(message) > 500 {
+		message = message[:500] + "..."
+	}
+
+	label := widget.NewLabel(message)
+	label.Wrapping = fyne.TextWrapWord
+
+	dialog.ShowCustom("Error", "OK", label, w)
 }
 
 func BuildSettings(w fyne.Window) fyne.CanvasObject {
@@ -66,8 +80,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	loadConfig := func() {
 		config, err := data.ReadSettingsFile()
 		if err != nil {
-			writeLog("ERROR", err.Error())
-			dialog.ShowError(err, w)
+			handleError(w, "Failed to load settings", err)
 			return
 		}
 
@@ -165,9 +178,8 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 					return
 				}
 
-				writeLog("ERROR", "SSH connection failed: "+err.Error())
 				fyne.Do(func() {
-					dialog.ShowError(fmt.Errorf("SSH connection failed: %w", err), w)
+					handleError(w, "SSH connection failed", err)
 					testConnectionButton.Enable()
 				})
 				return
@@ -178,8 +190,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 
 			fyne.Do(func() {
 				if err != nil {
-					writeLog("ERROR", "SSH connected, but closing failed: "+err.Error())
-					dialog.ShowError(fmt.Errorf("SSH connected, but closing failed: %w", err), w)
+					handleError(w, "SSH connected, but closing failed", err)
 				} else {
 					writeLog("INFO", "Successfully connected to the SSH server.")
 					dialog.ShowInformation("Connection Test", "Successfully connected to the SSH server.", w)
@@ -198,15 +209,13 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		func() {
 			privateKey, publicKey, err := sshclient.GenerateSSHKey()
 			if err != nil {
-				writeLog("ERROR", "Failed to generate SSH key: "+err.Error())
-				dialog.ShowError(err, w)
+				handleError(w, "Failed to generate SSH key", err)
 				return
 			}
 
 			// Save the generated keys to the specified paths
 			if err := sshclient.SavePrivateKey(privateKey, sshKeyPath.Text); err != nil {
-				writeLog("ERROR", "Failed to save SSH private key: "+err.Error())
-				dialog.ShowError(err, w)
+				handleError(w, "Failed to save SSH private key", err)
 				return
 			}
 
@@ -215,8 +224,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				publicKey,
 				fmt.Sprintf("%s.pub", sshKeyPath.Text),
 			); err != nil {
-				writeLog("ERROR", "Failed to save SSH public key: "+err.Error())
-				dialog.ShowError(err, w)
+				handleError(w, "Failed to save SSH public key", err)
 				return
 			}
 
@@ -237,7 +245,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 			pubPath := fmt.Sprintf("%s.pub", privPath)
 
 			if privPath == "" {
-				dialog.ShowError(fmt.Errorf("SSH Key Path is empty"), w)
+				showError(w, fmt.Errorf("SSH Key Path is empty"))
 				return
 			}
 
@@ -262,8 +270,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 
 						// With Fyne 2.6+, wrap UI calls in fyne.Do(func() { ... })
 						if err != nil {
-							writeLog("ERROR", "Failed to register SSH key: "+err.Error())
-							dialog.ShowError(err, w)
+							handleError(w, "Failed to register SSH key", err)
 							return
 						}
 
@@ -300,8 +307,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				}
 
 				// Network, known_hosts, or other errors: do not ask for a password
-				writeLog("ERROR", "SSH connection failed: "+err.Error())
-				dialog.ShowError(fmt.Errorf("SSH connection failed: %w", err), w)
+				handleError(w, "SSH connection failed", err)
 			}()
 		},
 	)
@@ -353,8 +359,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 			}
 
 			if err := data.WriteSettingsFile(config); err != nil {
-				writeLog("ERROR", "Failed to save settings: "+err.Error())
-				dialog.ShowError(err, w)
+				handleError(w, "Failed to save settings", err)
 				return
 			}
 
@@ -369,8 +374,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 					}
 
 					if err := app.RestartApp(); err != nil {
-						log.WriteLog(time.Now().Format("15:04:05"), "ERROR", err.Error(), "Application")
-						dialog.ShowError(err, w)
+						handleError(w, "Failed to restart application", err)
 					}
 				},
 				w,

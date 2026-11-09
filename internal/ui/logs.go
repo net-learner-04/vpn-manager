@@ -18,6 +18,7 @@ func BuildLogsItem(log log.Log) fyne.CanvasObject {
 	time := widget.NewLabel(log.Time)
 	level := widget.NewLabel(log.Level)
 	message := widget.NewLabel(log.Message)
+	message.Wrapping = fyne.TextWrapWord
 	source := widget.NewLabel(log.Source)
 
 	return container.NewBorder(
@@ -114,7 +115,7 @@ func BuildLogs(w fyne.Window) fyne.CanvasObject {
 	refresh := func() {
 		newLogs, err := log.ReadLogs()
 		if err != nil {
-			dialog.ShowError(err, w)
+			handleError(w, "Failed to read logs", err)
 			return
 		}
 
@@ -126,7 +127,7 @@ func BuildLogs(w fyne.Window) fyne.CanvasObject {
 		"Clear Logs",
 		func() {
 			if err := os.WriteFile(log.LogFile, nil, 0644); err != nil {
-				dialog.ShowError(err, w)
+				handleError(w, "Failed to clear logs", err)
 				return
 			}
 
@@ -147,7 +148,7 @@ func BuildLogs(w fyne.Window) fyne.CanvasObject {
 			saveDialog := dialog.NewFileSave(
 				func(writer fyne.URIWriteCloser, err error) {
 					if err != nil {
-						dialog.ShowError(err, w)
+						handleError(w, "Failed to export logs", err)
 						return
 					}
 
@@ -160,14 +161,14 @@ func BuildLogs(w fyne.Window) fyne.CanvasObject {
 					// Copy the contents of the log file to the selected location
 					src, err := os.Open(log.LogFile)
 					if err != nil {
-						dialog.ShowError(err, w)
+						handleError(w, "Failed to open logs", err)
 						return
 					}
 					defer src.Close()
 
 					// Copy the contents of the log file to the selected location
 					if _, err := io.Copy(writer, src); err != nil {
-						dialog.ShowError(err, w)
+						handleError(w, "Failed to export logs", err)
 						return
 					}
 

@@ -7,7 +7,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
@@ -18,6 +17,9 @@ import (
 func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 	// Create the different views for the application.
 	dashboardView := BuildDashboard()
+
+	// Keep the dashboard labels up to date
+	StartDashboardRefresh()
 	deviceView := BuildDevices(w)
 	logsView := BuildLogs(w)
 	settingsView := BuildSettings(w)
@@ -83,7 +85,7 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 			name := deviceSelect.Selected
 			if name == "" {
 				writeLog("WARN", "No device selected")
-				dialog.ShowError(fmt.Errorf("Select a device to connect"), w)
+				showError(w, fmt.Errorf("Select a device to connect"))
 				return
 			}
 
@@ -92,8 +94,7 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 
 				fyne.Do(func() {
 					if err != nil {
-						writeLog("ERROR", err.Error())
-						dialog.ShowError(err, w)
+						handleError(w, "Connect failed", err)
 						return
 					}
 					writeLog("INFO", "Successfully connected to WireGuard.")
@@ -112,7 +113,7 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 			name := deviceSelect.Selected
 			if name == "" {
 				writeLog("WARN", "No device selected")
-				dialog.ShowError(fmt.Errorf("Select a device to disconnect"), w)
+				showError(w, fmt.Errorf("Select a device to disconnect"))
 				return
 			}
 
@@ -121,8 +122,7 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 
 				fyne.Do(func() {
 					if err != nil {
-						writeLog("ERROR", err.Error())
-						dialog.ShowError(err, w)
+						handleError(w, "Disconnect failed", err)
 						return
 					}
 					writeLog("INFO", "Successfully disconnected from WireGuard.")
