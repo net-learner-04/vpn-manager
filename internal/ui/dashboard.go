@@ -2,10 +2,7 @@ package ui
 
 import (
 	"fmt"
-	"image"
-	"image/color"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -13,7 +10,6 @@ import (
 	"vpn-manager/internal/wireguard"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 )
@@ -27,12 +23,10 @@ var (
 	handshakeLabel   *widget.Label
 	totalLabel       *widget.Label
 
-	trafficGraphWidget *trafficGraph
-	statsErrorLogged   bool
-	lastRx             uint64
-	lastTx             uint64
-	lastStatsTime      time.Time
-	trafficSamples     []float64
+	statsErrorLogged bool
+	lastRx           uint64
+	lastTx           uint64
+	lastStatsTime    time.Time
 )
 
 func BuildDashboard() fyne.CanvasObject {
@@ -71,16 +65,11 @@ func BuildDashboard() fyne.CanvasObject {
 
 	// Create a vertical box container to hold
 	// the title and the status cards
-	header := container.NewVBox(
+	return container.NewVBox(
 		title,
 		widget.NewSeparator(),
 		statusRow,
 	)
-
-	// The graph takes all the remaining space below the header
-	trafficGraphWidget = newTrafficGraph()
-	dashboard := container.NewBorder(header, nil, nil, nil, widget.NewCard("Traffic", "", trafficGraphWidget))
-	return dashboard
 }
 
 // setConnectionStatus updates the connection label and the flag the dashboard
@@ -136,7 +125,6 @@ func RefreshDashboard() {
 		statsErrorLogged = false
 
 		now := time.Now()
-		total := stats.TotalRx + stats.TotalTx
 		var rxRate, txRate float64
 		if !lastStatsTime.IsZero() {
 			elapsed := now.Sub(lastStatsTime).Seconds()
@@ -149,16 +137,6 @@ func RefreshDashboard() {
 				}
 			}
 		}
-
-		// Record a sample only when traffic moved, so the graph stays frozen
-		// while the tunnel is idle or disconnected.
-		if lastStatsTime.IsZero() || total > lastRx+lastTx {
-			trafficSamples = append(trafficSamples, rxRate+txRate)
-			if len(trafficSamples) > 60 {
-				trafficSamples = trafficSamples[1:]
-			}
-		}
-		samples := append([]float64(nil), trafficSamples...)
 
 		lastRx, lastTx, lastStatsTime = stats.TotalRx, stats.TotalTx, now
 
@@ -178,10 +156,6 @@ func RefreshDashboard() {
 				handshakeLabel.SetText("Last Handshake: N/A")
 			} else {
 				handshakeLabel.SetText("Last Handshake: " + stats.LastHandshake.Format("15:04:05"))
-			}
-
-			if trafficGraphWidget != nil {
-				trafficGraphWidget.setValues(samples)
 			}
 		})
 	}()
@@ -240,112 +214,3 @@ func formatRate(rate float64) string {
 		return fmt.Sprintf("%.0f B/s", rate)
 	}
 }
-
-// trafficGraph draws a moving line of recent throughput samples.
-type trafficGraph struct {
-	widget.BaseWidget
-
-	mu     sync.Mutex
-	values []float64
-	max    float64
-}
-
-func newTrafficGraph() *trafficGraph {
-	g := &trafficGraph{}
-	g.ExtendBaseWidget(g)
-	return g
-}
-
-func (g *trafficGraph) setValues(values []float64) {
-	g.mu.Lock()
-	g.values = append([]float64(nil), values...)
-	g.max = 0
-	for _, v := range g.values {
-		if v > g.max {
-			g.max = v
-		}
-	}
-	if g.max <= 0 {
-		g.max = 1
-	}
-	g.mu.Unlock()
-	g.Refresh()
-}
-
-func (g *trafficGraph) CreateRenderer() fyne.WidgetRenderer {
-	return &trafficGraphRenderer{
-		g:      g,
-		raster: canvas.NewRaster(g.draw),
-	}
-}
-
-func (g *trafficGraph) draw(w, h int) image.Image {
-	g.mu.Lock()
-	values := append([]float64(nil), g.values...)
-	max := g.max
-	g.mu.Unlock()
-
-	img := image.NewRGBA(image.Rect(0, 0, w, h))
-
-	background := color.RGBA{R: 214, G: 211, B: 206, A: 255}
-	grid := color.RGBA{R: 200, G: 197, B: 191, A: 255}
-	line := color.RGBA{R: 71, G: 125, B: 82, A: 255}
-
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
-			img.Set(x, y, background)
-		}
-	}
-
-	for i := 1; i <= 3; i++ {
-		y := h * i / 4
-		for x := 0; x < w; x++ {
-			img.Set(x, y, grid)
-		}
-	}
-
-	if w <= 1 || len(values) < 2 {
-		return img
-	}
-
-	for x := 0; x < w; x++ {
-		idx := x * (len(values) - 1) / (w - 1)
-		v := values[idx]
-		y := h - int(float64(h)*v/max)
-		if y < 0 {
-			y = 0
-		}
-		if y >= h {
-			y = h - 1
-		}
-		img.Set(x, y, line)
-		if y > 0 {
-			img.Set(x, y-1, line)
-		}
-	}
-
-	return img
-}
-
-type trafficGraphRenderer struct {
-	g      *trafficGraph
-	raster *canvas.Raster
-}
-
-func (r *trafficGraphRenderer) Layout(size fyne.Size) {
-	r.raster.Resize(size)
-}
-
-func (r *trafficGraphRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(200, 150)
-}
-
-func (r *trafficGraphRenderer) Refresh() {
-	r.raster.Refresh()
-}
-
-func (r *trafficGraphRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{r.raster}
-}
-
-func (r *trafficGraphRenderer) Destroy() {}
