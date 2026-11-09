@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"fyne.io/fyne/v2/app"
 
@@ -29,6 +30,15 @@ func main() {
 			os.Exit(1)
 		}
 		return
+	}
+
+	// Warn when running from a temporary "go run" build directory, because the
+	// service binary path would be unstable and lost on the next run.
+	if exe, err := os.Executable(); err == nil {
+		lower := strings.ToLower(exe)
+		if strings.Contains(lower, "go-build") || strings.Contains(lower, "\\temp\\") {
+			log.Println("WARNING: running from a temporary build directory (go run). Use 'go build .' and run the resulting .exe instead.")
+		}
 	}
 
 	// Clean up any orphan tunnel services left behind by an abnormal exit
