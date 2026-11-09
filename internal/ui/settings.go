@@ -86,7 +86,9 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	wireguardPort := widget.NewEntry()
 	dns := widget.NewEntry()
 	allowedIPs := widget.NewEntry()
+	allowedIPs.SetPlaceHolder("e.g. 0.0.0.0/0 (all traffic)")
 	subnet := widget.NewEntry()
+	subnet.SetPlaceHolder("e.g. 10.10.10.0/24")
 
 	loadConfig := func() {
 		config, err := data.ReadSettingsFile()
