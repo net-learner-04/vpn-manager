@@ -30,6 +30,17 @@ func GetServerStats() (ServerStats, error) {
 		return stats, err
 	}
 
+	// Only aggregate traffic for peers that belong to this app, so the
+	// dashboard does not show other tunnels (for example a manually added peer).
+	devices, err := data.ReadDevicesFile()
+	if err != nil {
+		devices = []data.Device{}
+	}
+	ourKeys := make(map[string]bool, len(devices))
+	for _, d := range devices {
+		ourKeys[d.PublicKey] = true
+	}
+
 	client, err := sshclient.ConnectServer()
 	if err != nil {
 		return stats, err
@@ -49,6 +60,11 @@ func GetServerStats() (ServerStats, error) {
 
 		fields := strings.Split(line, "\t")
 		if len(fields) < 7 {
+			continue
+		}
+
+		// Skip peers that are not managed by this app
+		if !ourKeys[fields[0]] {
 			continue
 		}
 

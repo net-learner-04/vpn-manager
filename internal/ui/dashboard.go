@@ -111,6 +111,7 @@ func RefreshDashboard() {
 		statsErrorLogged = false
 
 		now := time.Now()
+		total := stats.TotalRx + stats.TotalTx
 		var rxRate, txRate float64
 		if !lastStatsTime.IsZero() {
 			elapsed := now.Sub(lastStatsTime).Seconds()
@@ -123,16 +124,21 @@ func RefreshDashboard() {
 				}
 			}
 		}
+
+		// Record a sample only when traffic moved, so the graph stays frozen
+		// while the tunnel is idle or disconnected.
+		if lastStatsTime.IsZero() || total > lastRx+lastTx {
+			trafficSamples = append(trafficSamples, rxRate+txRate)
+			if len(trafficSamples) > 60 {
+				trafficSamples = trafficSamples[1:]
+			}
+		}
+		samples := append([]float64(nil), trafficSamples...)
+
 		lastRx, lastTx, lastStatsTime = stats.TotalRx, stats.TotalTx, now
 
 		// Download = bytes the client receives (server tx), upload = bytes sent
 		downloadRate, uploadRate := txRate, rxRate
-
-		trafficSamples = append(trafficSamples, rxRate+txRate)
-		if len(trafficSamples) > 60 {
-			trafficSamples = trafficSamples[1:]
-		}
-		samples := append([]float64(nil), trafficSamples...)
 
 		fyne.Do(func() {
 			if downloadLabel == nil {
