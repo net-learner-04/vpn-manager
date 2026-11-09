@@ -16,7 +16,11 @@ import (
 
 func BuildLogsItem(log log.Log) fyne.CanvasObject {
 	time := widget.NewLabel(log.Time)
+
+	// Fix the level column width so messages line up regardless of level text
 	level := widget.NewLabel(log.Level)
+	levelCell := container.NewGridWrap(fyne.NewSize(64, level.MinSize().Height), level)
+
 	message := widget.NewLabel(log.Message)
 	message.Wrapping = fyne.TextWrapWord
 	source := widget.NewLabel(log.Source)
@@ -27,7 +31,7 @@ func BuildLogsItem(log log.Log) fyne.CanvasObject {
 		nil,
 		time,
 		source,
-		container.NewHBox(level, message),
+		container.NewHBox(levelCell, message),
 	)
 }
 

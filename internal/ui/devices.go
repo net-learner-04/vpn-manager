@@ -241,6 +241,7 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 			footer,
 		),
 		nil,
+		nil,
 		container.NewVScroll(listContainer),
 	)
 
