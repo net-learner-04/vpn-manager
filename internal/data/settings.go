@@ -44,11 +44,6 @@ func CreateSettingsFile() error {
 		return err
 	}
 
-	// Migrate the legacy settings file if it still exists
-	if migrateLegacyFile(legacySettingsFile, path) {
-		return nil
-	}
-
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return err

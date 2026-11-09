@@ -8,12 +8,6 @@ import (
 // appDirName is the folder under %ProgramData% that holds all runtime data.
 const appDirName = "VPNManager"
 
-// Legacy relative paths used before data moved to %ProgramData%.
-const (
-	legacySettingsFile = "internal/data/json/settings.json"
-	legacyDevicesFile  = "internal/data/json/devices.json"
-)
-
 // AppDir returns the absolute path to the application data directory.
 func AppDir() string {
 	programData := os.Getenv("ProgramData")
@@ -50,22 +44,4 @@ func ConfPath(name string) string {
 // LogPath returns the absolute path to the application log file.
 func LogPath() string {
 	return filepath.Join(AppDir(), "logs", "vpn-manager.log")
-}
-
-// migrateLegacyFile copies a legacy data file to its new location once.
-func migrateLegacyFile(legacy, dst string) bool {
-	data, err := os.ReadFile(legacy)
-	if err != nil {
-		return false
-	}
-
-	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
-		return false
-	}
-
-	if err := os.WriteFile(dst, data, 0644); err != nil {
-		return false
-	}
-
-	return true
 }

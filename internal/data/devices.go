@@ -28,11 +28,6 @@ func CreateDevicesFile() error {
 		return err
 	}
 
-	// Migrate the legacy devices file if it still exists
-	if migrateLegacyFile(legacyDevicesFile, path) {
-		return nil
-	}
-
 	// Create the parent directory if it does not exist yet
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
