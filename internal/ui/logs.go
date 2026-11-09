@@ -25,13 +25,17 @@ func BuildLogsItem(log log.Log) fyne.CanvasObject {
 	message.Wrapping = fyne.TextWrapWord
 	source := widget.NewLabel(log.Source)
 
+	// Put the level to the left of the message so the message wraps within the
+	// available width instead of overlapping the source label.
+	center := container.NewBorder(nil, nil, levelCell, nil, message)
+
 	return container.NewBorder(
 		// top, bottom, left, right, center
 		nil,
 		nil,
 		time,
 		source,
-		container.NewHBox(levelCell, message),
+		center,
 	)
 }
 

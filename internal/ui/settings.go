@@ -50,9 +50,17 @@ func showError(w fyne.Window, err error) {
 
 	scroll := container.NewVScroll(label)
 
+	// Size the dialog to the message: compact for short text, wider for long text
+	width := float32(380)
+	height := float32(160)
+	if len(message) > 100 {
+		width = 560
+		height = 240
+	}
+
 	d := dialog.NewCustom("Error", "OK", scroll, w)
 	d.Show()
-	d.Resize(fyne.NewSize(560, 260))
+	d.Resize(fyne.NewSize(width, height))
 }
 
 func BuildSettings(w fyne.Window) fyne.CanvasObject {
