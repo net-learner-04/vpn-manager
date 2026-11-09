@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image/color"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -76,6 +77,16 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 		deviceSelect.Refresh()
 	}
 	loadDeviceOptions()
+
+	// Keep the device selector in sync with the device list
+	go func() {
+		for {
+			time.Sleep(3 * time.Second)
+			fyne.Do(func() {
+				loadDeviceOptions()
+			})
+		}
+	}()
 
 	connectButton := widget.NewButton(
 		"Connect",

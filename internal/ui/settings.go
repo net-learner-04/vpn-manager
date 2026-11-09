@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"time"
 
-	"vpn-manager/internal/app"
 	"vpn-manager/internal/data"
 	"vpn-manager/internal/log"
 	sshclient "vpn-manager/internal/ssh"
@@ -42,14 +41,18 @@ func handleError(w fyne.Window, message string, err error) {
 // stretching the window.
 func showError(w fyne.Window, err error) {
 	message := err.Error()
-	if len(message) > 500 {
-		message = message[:500] + "..."
+	if len(message) > 800 {
+		message = message[:800] + "..."
 	}
 
 	label := widget.NewLabel(message)
 	label.Wrapping = fyne.TextWrapWord
 
-	dialog.ShowCustom("Error", "OK", label, w)
+	scroll := container.NewVScroll(label)
+
+	d := dialog.NewCustom("Error", "OK", scroll, w)
+	d.Show()
+	d.Resize(fyne.NewSize(560, 260))
 }
 
 func BuildSettings(w fyne.Window) fyne.CanvasObject {
@@ -103,6 +106,53 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 
 	// Load data when the program starts
 	loadConfig()
+
+	// Autosave settings on every change so the app always uses the latest values
+	serverPublicKey := ""
+	if config, err := data.ReadSettingsFile(); err == nil {
+		serverPublicKey = config.ServerPublicKey
+	}
+	originalServerAddress := serverAddress.Text
+
+	saveConfig := func() {
+		if serverAddress.Text != originalServerAddress {
+			serverPublicKey = ""
+		}
+
+		config := data.Settings{
+			ServerAddress:     serverAddress.Text,
+			SSHPort:           sshPort.Text,
+			SSHUsername:       sshUsername.Text,
+			SSHKeyPath:        sshKeyPath.Text,
+			SSHKnownHostsPath: knownHostsPath.Text,
+			ConnectionTimeout: connectionTimeout.Text,
+
+			ServerInterface: serverInterface.Text,
+			WireGuardPort:   wireguardPort.Text,
+			DNS:             dns.Text,
+			AllowedIPs:      allowedIPs.Text,
+			RefreshInterval: refreshInterval.Text,
+			VPNSubnet:       subnet.Text,
+			ServerPublicKey: serverPublicKey,
+		}
+
+		if err := data.WriteSettingsFile(config); err != nil {
+			writeLog("ERROR", "Failed to autosave settings: "+err.Error())
+		}
+	}
+
+	serverAddress.OnChanged = func(string) { saveConfig() }
+	sshPort.OnChanged = func(string) { saveConfig() }
+	sshUsername.OnChanged = func(string) { saveConfig() }
+	sshKeyPath.OnChanged = func(string) { saveConfig() }
+	knownHostsPath.OnChanged = func(string) { saveConfig() }
+	connectionTimeout.OnChanged = func(string) { saveConfig() }
+	serverInterface.OnChanged = func(string) { saveConfig() }
+	refreshInterval.OnChanged = func(string) { saveConfig() }
+	wireguardPort.OnChanged = func(string) { saveConfig() }
+	dns.OnChanged = func(string) { saveConfig() }
+	allowedIPs.OnChanged = func(string) { saveConfig() }
+	subnet.OnChanged = func(string) { saveConfig() }
 
 	serverForm := container.NewVBox(
 		container.NewGridWithColumns(2,
@@ -349,47 +399,9 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	saveSettingsButton := widget.NewButton(
 		"Save Settings",
 		func() {
-			config := data.Settings{
-				ServerAddress:     serverAddress.Text,
-				SSHPort:           sshPort.Text,
-				SSHUsername:       sshUsername.Text,
-				SSHKeyPath:        sshKeyPath.Text,
-				SSHKnownHostsPath: knownHostsPath.Text,
-				ConnectionTimeout: connectionTimeout.Text,
-
-				ServerInterface: serverInterface.Text,
-				WireGuardPort:   wireguardPort.Text,
-				DNS:             dns.Text,
-				AllowedIPs:      allowedIPs.Text,
-				RefreshInterval: refreshInterval.Text,
-				VPNSubnet:       subnet.Text,
-			}
-
-			if err := data.WriteSettingsFile(config); err != nil {
-				handleError(w, "Failed to save settings", err)
-				return
-			}
-
+			saveConfig()
 			writeLog("INFO", "Settings saved successfully.")
-
-			restartDialog := dialog.NewConfirm(
-				"Settings Saved",
-				"Settings have been saved successfully.\nThe application will now restart.",
-				func(confirmed bool) {
-					if !confirmed {
-						return
-					}
-
-					if err := app.RestartApp(); err != nil {
-						handleError(w, "Failed to restart application", err)
-					}
-				},
-				w,
-			)
-
-			restartDialog.SetConfirmText("Restart")
-			restartDialog.SetDismissText("Cancel")
-			restartDialog.Show()
+			dialog.ShowInformation("Settings Saved", "Settings have been saved successfully.", w)
 		},
 	)
 

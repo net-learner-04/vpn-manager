@@ -101,6 +101,11 @@ func RefreshDashboard() {
 				statsErrorLogged = true
 				writeLog("WARN", "Failed to read server stats: "+err.Error())
 			}
+			fyne.Do(func() {
+				if handshakeLabel != nil {
+					handshakeLabel.SetText("Last Handshake: Server unreachable")
+				}
+			})
 			return
 		}
 		statsErrorLogged = false
