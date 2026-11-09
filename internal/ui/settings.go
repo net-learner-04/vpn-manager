@@ -12,6 +12,7 @@ import (
 	"vpn-manager/internal/data"
 	"vpn-manager/internal/log"
 	sshclient "vpn-manager/internal/ssh"
+	"vpn-manager/internal/wireguard"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -305,6 +306,32 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 		},
 	)
 
+	// Setup Server button
+	var setupServerButton *widget.Button
+	setupServerButton = widget.NewButton(
+		"Setup Server",
+		func() {
+			setupServerButton.Disable()
+
+			go func() {
+				err := wireguard.SetupServer()
+				if err == nil {
+					err = wireguard.SetupSudoers()
+				}
+
+				fyne.Do(func() {
+					setupServerButton.Enable()
+					if err != nil {
+						handleError(w, "Server setup failed", err)
+						return
+					}
+					writeLog("INFO", "Server setup completed successfully.")
+					dialog.ShowInformation("Setup Server", "Server setup completed successfully.", w)
+				})
+			}()
+		},
+	)
+
 	// Save Settings button
 	saveSettingsButton := widget.NewButton(
 		"Save Settings",
@@ -356,10 +383,11 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 	)
 
 	buttonBox := container.NewGridWithColumns(
-		4,
+		3,
 		testConnectionButton,
 		generateSSHKeyButton,
 		registerSSHKeyButton,
+		setupServerButton,
 		saveSettingsButton,
 	)
 

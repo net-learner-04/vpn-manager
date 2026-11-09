@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/app"
 
 	"vpn-manager/internal/ui"
+	"vpn-manager/internal/wireguard"
 
 	"golang.zx2c4.com/wireguard/windows/conf"
 	"golang.zx2c4.com/wireguard/windows/tunnel"
@@ -29,6 +30,13 @@ func main() {
 		}
 		return
 	}
+
+	// Clean up any orphan tunnel services left behind by an abnormal exit
+	go func() {
+		if err := wireguard.CleanupOrphanServices(); err != nil {
+			log.Println("Cleanup orphan services:", err)
+		}
+	}()
 
 	// Create a new Fyne application with a unique ID
 	a := app.NewWithID("com.example.vpnmanager")
