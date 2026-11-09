@@ -84,8 +84,12 @@ func BuildDashboard() fyne.CanvasObject {
 // RefreshDashboard updates the dashboard labels with real data.
 func RefreshDashboard() {
 	// Peer count comes from the local device list
-	if devices, err := data.ReadDevicesFile(); err == nil && peersLabel != nil {
-		peersLabel.SetText(fmt.Sprintf("Peers: %d", len(devices)))
+	if devices, err := data.ReadDevicesFile(); err == nil {
+		fyne.Do(func() {
+			if peersLabel != nil {
+				peersLabel.SetText(fmt.Sprintf("Peers: %d", len(devices)))
+			}
+		})
 	}
 
 	// Server statistics are queried in the background so the UI stays responsive

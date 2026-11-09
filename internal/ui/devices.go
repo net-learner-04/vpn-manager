@@ -192,7 +192,9 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 						// Create the device and save it to the devices file
 						newDevice, err := wireguard.CreateDevice(deviceName)
 						if err != nil {
-							handleError(w, "failed to create device", err)
+							fyne.Do(func() {
+								handleError(w, "failed to create device", err)
+							})
 							return
 						}
 
@@ -202,14 +204,17 @@ func BuildDevices(w fyne.Window) fyne.CanvasObject {
 						)
 
 						if err := data.WriteDevicesFile(updatedDevices); err != nil {
-							handleError(w, "failed to write devices file", err)
+							fyne.Do(func() {
+								handleError(w, "failed to write devices file", err)
+							})
 							return
 						}
 
-						writeLog("INFO", "Device added successfully: "+deviceName)
-
-						deviceList = updatedDevices
-						refreshDeviceList()
+						fyne.Do(func() {
+							writeLog("INFO", "Device added successfully: "+deviceName)
+							deviceList = updatedDevices
+							refreshDeviceList()
+						})
 					}()
 				},
 				w,

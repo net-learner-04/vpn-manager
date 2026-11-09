@@ -170,7 +170,7 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 								}
 
 								// Retry now that the key is trusted
-								go testConnection()
+								fyne.Do(testConnection)
 							},
 							w,
 						).Show()
@@ -268,18 +268,19 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 					go func() {
 						err := sshclient.RegisterKey(pw, privPath, pubPath)
 
-						// With Fyne 2.6+, wrap UI calls in fyne.Do(func() { ... })
-						if err != nil {
-							handleError(w, "Failed to register SSH key", err)
-							return
-						}
+						fyne.Do(func() {
+							if err != nil {
+								handleError(w, "Failed to register SSH key", err)
+								return
+							}
 
-						writeLog("INFO", "SSH public key registered successfully.")
-						dialog.ShowInformation(
-							"SSH Key Registered",
-							"SSH public key registered successfully.",
-							w,
-						)
+							writeLog("INFO", "SSH public key registered successfully.")
+							dialog.ShowInformation(
+								"SSH Key Registered",
+								"SSH public key registered successfully.",
+								w,
+							)
+						})
 					}()
 				}, w)
 			}
@@ -295,19 +296,25 @@ func BuildSettings(w fyne.Window) fyne.CanvasObject {
 				client, err := sshclient.ConnectServer()
 				if err == nil {
 					client.Close()
-					writeLog("INFO", "SSH key is already registered.")
-					dialog.ShowInformation("Already Registered", "SSH key login already works.", w)
+					fyne.Do(func() {
+						writeLog("INFO", "SSH key is already registered.")
+						dialog.ShowInformation("Already Registered", "SSH key login already works.", w)
+					})
 					return
 				}
 
 				// Only ask for a password when the key was rejected
 				if sshclient.IsAuthError(err) {
-					askPassword()
+					fyne.Do(func() {
+						askPassword()
+					})
 					return
 				}
 
 				// Network, known_hosts, or other errors: do not ask for a password
-				handleError(w, "SSH connection failed", err)
+				fyne.Do(func() {
+					handleError(w, "SSH connection failed", err)
+				})
 			}()
 		},
 	)
