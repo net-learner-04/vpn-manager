@@ -37,6 +37,7 @@ func BuildWindow(a fyne.App, w fyne.Window) {
 						return
 					}
 					a.SendNotification(&fyne.Notification{Title: "VPN Manager", Content: "Connected"})
+					setConnectionStatus(true)
 				})
 			}()
 		})
@@ -56,6 +57,7 @@ func BuildWindow(a fyne.App, w fyne.Window) {
 						return
 					}
 					a.SendNotification(&fyne.Notification{Title: "VPN Manager", Content: "Disconnected"})
+					setConnectionStatus(false)
 				})
 			}()
 		})

@@ -109,7 +109,7 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 						return
 					}
 					writeLog("INFO", "Successfully connected to WireGuard.")
-					connectionStatus.SetText("Connection: Connected")
+					setConnectionStatus(true)
 				})
 			}()
 		},
@@ -137,7 +137,7 @@ func BuildNavigation(w fyne.Window) fyne.CanvasObject {
 						return
 					}
 					writeLog("INFO", "Successfully disconnected from WireGuard.")
-					connectionStatus.SetText("Connection: Disconnected")
+					setConnectionStatus(false)
 				})
 			}()
 		},

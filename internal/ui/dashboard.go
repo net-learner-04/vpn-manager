@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"vpn-manager/internal/data"
@@ -19,6 +20,7 @@ import (
 
 var (
 	connectionStatus *widget.Label
+	tunnelConnected  atomic.Bool
 	peersLabel       *widget.Label
 	downloadLabel    *widget.Label
 	uploadLabel      *widget.Label
@@ -81,6 +83,19 @@ func BuildDashboard() fyne.CanvasObject {
 	return dashboard
 }
 
+// setConnectionStatus updates the connection label and the flag the dashboard
+// reads to decide whether server stats should be polled over SSH.
+func setConnectionStatus(connected bool) {
+	tunnelConnected.Store(connected)
+	if connectionStatus != nil {
+		if connected {
+			connectionStatus.SetText("Connection: Connected")
+		} else {
+			connectionStatus.SetText("Connection: Disconnected")
+		}
+	}
+}
+
 // RefreshDashboard updates the dashboard labels with real data.
 func RefreshDashboard() {
 	// Peer count comes from the local device list
@@ -92,8 +107,18 @@ func RefreshDashboard() {
 		})
 	}
 
-	// Server statistics are queried in the background so the UI stays responsive
+	// Server statistics are queried in the background so the UI stays responsive.
+	// Skip the SSH query while disconnected to avoid polling the server needlessly.
 	go func() {
+		if !tunnelConnected.Load() {
+			fyne.Do(func() {
+				if handshakeLabel != nil {
+					handshakeLabel.SetText("Last Handshake: N/A")
+				}
+			})
+			return
+		}
+
 		stats, err := wireguard.GetServerStats()
 		if err != nil {
 			// Log the failure once so the Logs tab shows why stats stay empty
